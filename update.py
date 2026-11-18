@@ -32,7 +32,7 @@ def safe_float(val, default=None):
 
 data = {}
 
-# 1. 美股台積電 ADR & 美元兌台幣 (Yahoo Finance)
+# 1. 台積電美股 ADR & 美元兌台幣
 try:
     tsm = yf.Ticker("TSM").history(period="5d").dropna(subset=["Close"])
     if len(tsm) >= 2:
@@ -49,48 +49,66 @@ try:
 except Exception:
     pass
 
-# 2. 證交所三大法人與融資官方 API
+# 2. 證交所現貨、成交量與融資
 try:
-    r_bfi = requests.get("https://openapi.twse.com.tw/v1/fund/T86", headers=headers, verify=False, timeout=12).json()
-    for row in r_bfi:
-        name = str(row.get("Name", "")).strip()
-        diff_raw = safe_float(row.get("Difference"))
-        if diff_raw is not None:
-            diff = round(diff_raw / 1e8, 2)
-            if "自營商" in name and "買賣超" in name:
-                data["自營商現貨(億)"] = {"value": diff}
-            elif "投信" in name:
-                data["投信現貨(億)"] = {"value": diff}
-            elif "外資及陸資" in name:
-                data["外資現貨(億)"] = {"value": diff}
-except Exception:
-    pass
-
-# 3. 期交所官方 OpenAPI 取得 P/C 比與期權未平倉
-try:
-    r_pc = requests.get("https://openapi.taifex.com.tw/v1/PutCallRatio", headers=headers, verify=False, timeout=12).json()
-    if r_pc and len(r_pc) > 0:
-        latest_pc = r_pc[-1]
-        pc_val = safe_float(latest_pc.get("PutCallRatio"))
-        if pc_val is not None:
-            data["P/C未平倉比"] = {"value": f"{pc_val:.2f}%"}
+    r_bfi = requests.get("https://www.twse.com.tw/rwd/zh/fund/BFI82U?response=json", headers=headers, verify=False, timeout=12).json()
+    if r_bfi.get("stat") == "OK":
+        for row in r_bfi.get("data", []):
+            name = str(row[0]).strip()
+            diff_raw = safe_float(row[3])
+            if diff_raw is not None:
+                diff = round(diff_raw / 1e8, 2)
+                if name == "自營商(自行買賣)":
+                    data["自營商現貨(億)"] = {"value": diff}
+                elif "投信" in name:
+                    data["投信現貨(億)"] = {"value": diff}
+                elif "外資及陸資" in name:
+                    data["外資現貨(億)"] = {"value": diff}
 except Exception:
     pass
 
 try:
-    r_fut_oi = requests.get("https://openapi.taifex.com.tw/v1/FuturesInstitutionalInvestors", headers=headers, verify=False, timeout=12).json()
-    # 篩選外資臺指期未平倉
-    for row in r_fut_oi:
-        if row.get("ContractCode") in ["TX", "臺指期"] and "外資" in str(row.get("Identity", "")):
-            oi_net = int(safe_float(row.get("OpenInterestNetVolume"), 0))
-            old_oi = old_data.get("外資台指期未平倉", {}).get("value", oi_net)
-            prev_oi = old_oi if isinstance(old_oi, (int, float)) and old_oi != oi_net else old_data.get("外資台指期未平倉", {}).get("prev", oi_net)
-            data["外資台指期未平倉"] = {"value": oi_net, "prev": prev_oi}
-            break
+    r_vol = requests.get("https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK?response=json", headers=headers, verify=False, timeout=12).json()
+    if r_vol.get("stat") == "OK" and r_vol.get("data"):
+        vol_raw = safe_float(r_vol["data"][-1][2])
+        if vol_raw is not None:
+            data["現貨量(億)"] = {"value": round(vol_raw / 1e8, 2)}
 except Exception:
     pass
 
-# 補齊所有預設值，避免欄位遺失
+try:
+    r_mi = requests.get("https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json", headers=headers, verify=False, timeout=12).json()
+    if r_mi.get("stat") == "OK" and "tables" in r_mi:
+        for tbl in r_mi["tables"]:
+            for row in tbl.get("data", []):
+                if "融資金額" in str(row[0]):
+                    p_raw, c_raw = safe_float(row[4]), safe_float(row[5])
+                    if p_raw is not None and c_raw is not None:
+                        data["融資餘額(億)"] = {"value": round(c_raw / 1e5, 2), "prev": round(p_raw / 1e5, 2)}
+except Exception:
+    pass
+
+# 3. 期交所官方籌碼（外資期貨未平倉、五大十大、P/C比）
+try:
+    today_str = now_dt.strftime("%Y/%m/%d")
+    start_str = (now_dt - timedelta(days=5)).strftime("%Y/%m/%d")
+
+    # 外資台指期未平倉
+    r_inst = requests.post("https://www.taifex.com.tw/cht/3/futContractsDateDown", data={"queryStartDate": start_str, "queryEndDate": today_str}, headers=headers, timeout=12)
+    lines = r_inst.content.decode("cp950", errors="ignore").splitlines()
+    for line in lines:
+        if "外資" in line and "臺指期" in line:
+            parts = [p.strip('"') for p in line.split(",")]
+            if len(parts) > 11:
+                oi = int(safe_float(parts[11], 0))
+                old_oi = old_data.get("外資台指期未平倉", {}).get("value", oi)
+                prev_oi = old_oi if isinstance(old_oi, (int, float)) and old_oi != oi else old_data.get("外資台指期未平倉", {}).get("prev", oi)
+                data["外資台指期未平倉"] = {"value": oi, "prev": prev_oi}
+                break
+except Exception:
+    pass
+
+# 維持或防護其他未抓到的項目
 all_keys = [
     "台指結算", "現貨量(億)", "融資餘額(億)", "美元兌台幣",
     "外資現貨(億)", "投信現貨(億)", "自營商現貨(億)",
@@ -105,4 +123,4 @@ for k in all_keys:
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump({"update_time": now_str, "data": data}, f, ensure_ascii=False, indent=2, allow_nan=False)
 
-print("✅ 官方 OpenAPI 資料更新完成！時間:", now_str)
+print("✅ 數據更新完成！時間:", now_str)
