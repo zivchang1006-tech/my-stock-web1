@@ -1,5 +1,6 @@
 import json
 import math
+import urllib.parse
 import urllib3
 import requests
 import yfinance as yf
@@ -28,6 +29,18 @@ def safe_float(val, default=None):
     except Exception:
         return default
 
+def fetch_json_smart(url):
+    # 先直接連線台灣官方伺服器，若被海外機房限制則自動切換公開中繼站
+    try:
+        r = requests.get(url, headers=headers, verify=False, timeout=10)
+        if r.status_code == 200 and r.text.strip():
+            return r.json()
+    except Exception:
+        pass
+    proxy_url = "https://allorigins.win" + urllib.parse.quote(url, safe="")
+    r2 = requests.get(proxy_url, headers=headers, timeout=20)
+    return r2.json()
+
 data = {}
 logs = []
 
@@ -38,10 +51,8 @@ try:
         val = safe_float(tsm["Close"].iloc[-1])
         prev_v = safe_float(tsm["Close"].iloc[-2])
         if val is not None and prev_v is not None:
-            val = round(val, 2)
-            chg = round(val - prev_v, 2)
-            data["台積電美股ADR指數"] = {"value": val, "change": chg}
-            logs.append(f"✅ 台積電ADR: {val} ({chg:+})")
+            data["台積電美股ADR指數"] = {"value": round(val, 2), "change": round(val - prev_v, 2)}
+            logs.append(f"✅ 台積電ADR: {round(val, 2)}")
 except Exception as e:
     logs.append(f"❌ 台積電ADR失敗: {e}")
 
@@ -57,81 +68,76 @@ except Exception as e:
 
 # 2. 證交所：三大法人現貨買賣超 (單位：億)
 try:
-    r = requests.get("https://twse.com.tw", headers=headers, verify=False, timeout=15).json()
+    r = fetch_json_smart("https://twse.com.tw")
     if r.get("stat") == "OK":
         for row in r["data"]:
-            name = str(row[0]).strip()
-            diff_raw = safe_float(row[3])
+            name = str(row).strip()
+            diff_raw = safe_float(row)
             if diff_raw is not None:
                 diff = round(diff_raw / 1e8, 2)
                 if "自營商" in name and "避險" not in name and "自行" not in name:
                     data["自營商現貨(億)"] = {"value": diff}
-                    logs.append(f"✅ 自營商現貨: {diff}")
                 elif "投信" in name:
                     data["投信現貨(億)"] = {"value": diff}
-                    logs.append(f"✅ 投信現貨: {diff}")
                 elif "外資及陸資" in name:
                     data["外資現貨(億)"] = {"value": diff}
-                    logs.append(f"✅ 外資現貨: {diff}")
+        logs.append("✅ 三大法人現貨抓取成功")
 except Exception as e:
     logs.append(f"❌ 三大法人現貨失敗: {e}")
 
 # 3. 證交所：大盤現貨成交量 (單位：億)
 try:
-    r_vol = requests.get("https://twse.com.tw", headers=headers, verify=False, timeout=15).json()
+    r_vol = fetch_json_smart("https://twse.com.tw")
     if r_vol.get("stat") == "OK" and r_vol.get("data"):
         last_row = r_vol["data"][-1]
-        vol_raw = safe_float(last_row[2])
+        vol_raw = safe_float(last_row)
         if vol_raw is not None:
-            vol_yi = round(vol_raw / 1e8, 2)
-            data["現貨量(億)"] = {"value": vol_yi}
-            logs.append(f"✅ 現貨量({last_row[0]}): {vol_yi}億")
+            data["現貨量(億)"] = {"value": round(vol_raw / 1e8, 2)}
+            logs.append(f"✅ 現貨量抓取成功: {round(vol_raw / 1e8, 2)}億")
 except Exception as e:
     logs.append(f"❌ 現貨量失敗: {e}")
 
 # 4. 證交所：融資餘額 (單位：億)
 try:
-    r_mi = requests.get("https://twse.com.tw", headers=headers, verify=False, timeout=15).json()
+    r_mi = fetch_json_smart("https://twse.com.tw")
     if r_mi.get("stat") == "OK" and "tables" in r_mi:
         for tbl in r_mi["tables"]:
             for row in tbl.get("data", []):
-                if "融資金額" in str(row[0]):
-                    p_raw = safe_float(row[4])
-                    c_raw = safe_float(row[5])
+                if "融資金額" in str(row):
+                    p_raw = safe_float(row)
+                    c_raw = safe_float(row)
                     if p_raw is not None and c_raw is not None:
-                        prev_v = round(p_raw / 1e5, 2)
-                        curr_v = round(c_raw / 1e5, 2)
-                        data["融資餘額(億)"] = {"value": curr_v, "prev": prev_v}
-                        logs.append(f"✅ 融資餘額: {curr_v}億 (前日:{prev_v})")
+                        data["融資餘額(億)"] = {"value": round(c_raw / 1e5, 2), "prev": round(p_raw / 1e5, 2)}
+                        logs.append(f"✅ 融資餘額抓取成功: {round(c_raw / 1e5, 2)}億")
 except Exception as e:
     logs.append(f"❌ 融資餘額失敗: {e}")
 
 # 5. 期交所 OpenAPI：台指結算/收盤 & P/C比
 try:
-    r_fut = requests.get("https://taifex.com.tw", headers=headers, verify=False, timeout=15).json()
+    r_fut = fetch_json_smart("https://taifex.com.tw")
     tx_rows = [x for x in r_fut if x.get("Contract") == "TX" and x.get("TradingSession") == "一般"]
     if tx_rows:
-        close_p = safe_float(tx_rows[0].get("Close"))
-        chg_p = safe_float(tx_rows[0].get("Change"), 0.0)
+        close_p = safe_float(tx_rows.get("Close"))
+        chg_p = safe_float(tx_rows.get("Change"), 0.0)
         if close_p is not None and close_p > 0:
             data["台指結算"] = {"value": int(close_p), "prev": int(close_p - chg_p)}
-            logs.append(f"✅ 台指結算: {int(close_p)} (漲跌:{chg_p})")
+            logs.append(f"✅ 台指結算抓取成功: {int(close_p)}")
 except Exception as e:
     logs.append(f"❌ 台指結算失敗: {e}")
 
 try:
-    r_pc = requests.get("https://taifex.com.tw", headers=headers, verify=False, timeout=15).json()
+    r_pc = fetch_json_smart("https://taifex.com.tw")
     if r_pc:
         pc_val = safe_float(r_pc[-1].get("PutCallRatio"))
         if pc_val is not None:
             data["P/C未平倉比"] = {"value": f"{pc_val}%"}
-            logs.append(f"✅ P/C比: {pc_val}%")
+            logs.append(f"✅ P/C比抓取成功: {pc_val}%")
 except Exception as e:
     logs.append(f"❌ P/C比失敗: {e}")
 
 # 6. 期交所 OpenAPI：三大法人台指期未平倉 & 選擇權未平倉淨額(萬)
 try:
-    r_inst = requests.get("https://taifex.com.tw", headers=headers, verify=False, timeout=15).json()
+    r_inst = fetch_json_smart("https://taifex.com.tw")
     tx_foreign = [x for x in r_inst if "臺股期貨" in x.get("ContractCode", "") and "外資" in x.get("Item", "")]
     if tx_foreign:
         oi_raw = safe_float(tx_foreign[-1].get("OpenInterestNetVolume"))
@@ -140,24 +146,23 @@ try:
             old_oi = old_data.get("外資台指期未平倉", {}).get("value", oi_net)
             prev_oi = old_oi if isinstance(old_oi, (int, float)) and old_oi != oi_net else old_data.get("外資台指期未平倉", {}).get("prev", oi_net)
             data["外資台指期未平倉"] = {"value": oi_net, "prev": prev_oi}
-            logs.append(f"✅ 外資台指期未平倉: {oi_net}")
+            logs.append(f"✅ 外資台指期未平倉抓取成功: {oi_net}")
 except Exception as e:
     logs.append(f"❌ 外資台指期失敗: {e}")
 
 try:
-    r_opt = requests.get("https://taifex.com.tw", headers=headers, verify=False, timeout=15).json()
+    r_opt = fetch_json_smart("https://taifex.com.tw")
     opt_foreign = [x for x in r_opt if "臺指選擇權" in x.get("ContractCode", "") and "外資" in x.get("Item", "")]
     if opt_foreign:
         net_amt = sum(safe_float(x.get("OpenInterestNetContractAmount"), 0.0) for x in opt_foreign)
-        val_wan = round(net_amt / 10, 0)
-        data["外資選擇權未平倉淨額(萬)"] = {"value": val_wan}
-        logs.append(f"✅ 外資選擇權淨額: {val_wan}萬")
+        data["外資選擇權未平倉淨額(萬)"] = {"value": round(net_amt / 10, 0)}
+        logs.append(f"✅ 外資選擇權淨額抓取成功: {round(net_amt / 10, 0)}萬")
 except Exception as e:
     logs.append(f"❌ 外資選擇權失敗: {e}")
 
 # 7. 期交所 OpenAPI：五大、十大特定法人淨額(口)
 try:
-    r_top = requests.get("https://taifex.com.tw", headers=headers, verify=False, timeout=15).json()
+    r_top = fetch_json_smart("https://taifex.com.tw")
     tx_top = [x for x in r_top if x.get("ContractCode") == "TX" and "所有契約" in x.get("ContractMonth", "")]
     if tx_top:
         row = tx_top[-1]
@@ -166,18 +171,16 @@ try:
         t10_b = safe_float(row.get("Top10SpecificBuyOI"))
         t10_s = safe_float(row.get("Top10SpecificSellOI"))
         if None not in (t5_b, t5_s, t10_b, t10_s):
-            top5 = int(t5_b - t5_s)
-            top10 = int(t10_b - t10_s)
-            data["五大淨額(口)"] = {"value": top5}
-            data["十大淨額(口)"] = {"value": top10}
-            logs.append(f"✅ 五大/十大淨額: {top5} / {top10}")
+            data["五大淨額(口)"] = {"value": int(t5_b - t5_s)}
+            data["十大淨額(口)"] = {"value": int(t10_b - t10_s)}
+            logs.append("✅ 五大/十大淨額抓取成功")
 except Exception as e:
     logs.append(f"❌ 五大十大失敗: {e}")
 
 # 8. 期交所 OpenAPI：小台(MTX)與微台(TMF)散戶多空比(%)
 try:
-    r_fut_all = requests.get("https://taifex.com.tw", headers=headers, verify=False, timeout=15).json()
-    r_inst_all = requests.get("https://taifex.com.tw", headers=headers, verify=False, timeout=15).json()
+    r_fut_all = fetch_json_smart("https://taifex.com.tw")
+    r_inst_all = fetch_json_smart("https://taifex.com.tw")
 
     for code, cname, key_name in [("MTX", "小型臺指", "小台散戶多空比(%)"), ("TMF", "微型臺指", "微台散戶多空比(%)")]:
         tot_oi = sum(safe_float(x.get("OpenInterest"), 0.0) for x in r_fut_all if x.get("Contract") == code and x.get("TradingSession") == "一般")
@@ -185,7 +188,7 @@ try:
         if tot_oi > 0:
             retail_ratio = round((-inst_net / tot_oi) * 100, 2)
             data[key_name] = {"value": retail_ratio}
-            logs.append(f"✅ {key_name}: {retail_ratio}%")
+            logs.append(f"✅ {key_name}抓取成功: {retail_ratio}%")
 except Exception as e:
     logs.append(f"❌ 散戶多空比失敗: {e}")
 
