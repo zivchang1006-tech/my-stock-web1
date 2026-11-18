@@ -8,10 +8,9 @@ tw_tz = timezone(timedelta(hours=8))
 now_dt = datetime.now(tw_tz)
 now_str = now_dt.strftime("%Y-%m-%d %H:%M")
 start_date = (now_dt - timedelta(days=10)).strftime("%Y-%m-%d")
-eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsImVtYWlsIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsInRva2VuX3ZlcnNpb24iOjB9.TVG3yuVUINXfZLW8vctJ33W_M3-WB_6Uaq81L1DK7Dk
-# 👇 請把雙引號裡面的字，換成你剛註冊拿到的 FinMind Token
-FINMIND_TOKEN = "把你的FinMind_Token貼在這裡"
-eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsImVtYWlsIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsInRva2VuX3ZlcnNpb24iOjB9.TVG3yuVUINXfZLW8vctJ33W_M3-WB_6Uaq81L1DK7Dk
+
+FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsImVtYWlsIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsInRva2VuX3ZlcnNpb24iOjB9.TVG3yuVUINXfZLW8vctJ33W_M3-WB_6Uaq81L1DK7Dk"
+
 try:
     with open("data.json", "r", encoding="utf-8") as f:
         old_data = json.load(f).get("data", {})
