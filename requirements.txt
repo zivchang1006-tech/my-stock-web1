@@ -1,6 +1,5 @@
-Plaintext
-playwright==1.42.0
-beautifulsoup4==4.12.3
-Bash
-pip install -r requirements.txt
-playwright install chromium
+requests
+yfinance
+pandas
+lxml
+beautifulsoup4
