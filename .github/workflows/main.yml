@@ -1,13 +1,10 @@
-yaml
 name: 下午16點30分準時更新＋每小時補齊數據
 
 on:
   schedule:
-    # 鬧鐘 1：每天台灣時間下午 16:30 準時執行（抓齊台股盤後 14 項數據）
     - cron: '30 8 * * 1-5'
-    # 鬧鐘 2：每小時的第 15 分鐘巡邏一次（補齊白天匯率與晚上美股 ADR）
     - cron: '15 * * * 1-6'
-  workflow_dispatch: # 允許你隨時手動按按鈕測試
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,12 +21,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 安裝必要套件與瀏覽器
+      - name: 安裝必要套件
         run: |
-          pip install -r requirements.txt
-          playwright install chromium || true
+          pip install requests yfinance pandas urllib3
 
-      - name: 執行爬蟲抓玩股網資料並自動驗證
+      - name: 執行爬蟲抓官方真實數據
         run: |
           python update.py
 
@@ -38,5 +34,6 @@ jobs:
           git config --global user.name 'StockBot'
           git config --global user.email 'bot@example.com'
           git add data.json
-          git commit -m "自動更新與補齊籌碼數據" || exit 0
+          git commit -m "自動更新最新股市數據" || exit 0
           git push
+
