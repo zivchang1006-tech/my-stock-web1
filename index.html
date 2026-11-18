@@ -1,566 +1,145 @@
 <!DOCTYPE html>
 <html lang="zh-TW" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台股每日盤後籌碼戰情室</title>
-    <!-- 引入 Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Google Fonts (Inter & Noto Sans TC) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>台股每日盤後籌碼戰情室</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
-
-    <!-- 主容器 -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        
-        <!-- 頂部標題與狀態列 -->
-        <header class="flex flex-col md:flex-row md:items-end justify-between border-b border-slate-800 pb-6 mb-8 gap-4">
-            <div>
-                <div class="flex items-center gap-3 mb-2">
-                    <span class="inline-block w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)] animate-pulse"></span>
-                    <span class="text-xs font-semibold tracking-wider uppercase text-slate-400">TWSE / TAIFEX Daily Chip Analytics</span>
-                </div>
-                <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-                    台股每日盤後籌碼戰情室
-                </h1>
-            </div>
-
-            <!-- 最後更新時間與重新整理按鈕 -->
-            <div class="flex flex-wrap items-center gap-3 sm:gap-4">
-                <div class="bg-slate-900/90 border border-slate-800 rounded-xl px-4 py-2.5 flex items-center gap-2 shadow-inner">
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span class="text-xs sm:text-sm text-slate-400">最後更新時間：</span>
-                    <span id="last-updated" class="text-xs sm:text-sm font-semibold text-slate-200">載入中...</span>
-                </div>
-                <button onclick="fetchChipData()" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 border border-slate-700 rounded-xl p-2.5 transition-colors duration-200 flex items-center justify-center shadow-sm" title="重新載入資料">
-                    <svg id="refresh-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                </button>
-            </div>
-        </header>
-
-        <!-- 燈號圖例說明列 -->
-        <div class="flex flex-wrap items-center justify-between gap-4 mb-6 bg-slate-900/60 border border-slate-800/80 rounded-xl px-4 py-3 text-xs text-slate-400">
-            <div class="flex flex-wrap items-center gap-5">
-                <span class="font-semibold text-slate-300">戰情燈號判定：</span>
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.85)]"></span>
-                    <span>紅燈（偏多訊號）</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.85)]"></span>
-                    <span>綠燈（偏空訊號）</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-slate-500 shadow-[0_0_6px_rgba(148,163,184,0.4)]"></span>
-                    <span>灰燈（中性參考）</span>
-                </div>
-            </div>
-            <div class="text-slate-500">資料來源：data.json</div>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+  <div class="max-w-7xl mx-auto">
+    <!-- 頂部標題區 -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-6 mb-6 gap-4">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-slate-400 tracking-widest mb-1">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+          TWSE / TAIFEX DAILY CHIP ANALYTICS
         </div>
-
-        <!-- 錯誤提示訊息框 (預設隱藏) -->
-        <div id="error-banner" class="hidden mb-6 bg-amber-950/60 border border-amber-700/70 text-amber-200 px-4 py-3 rounded-xl flex items-start sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <svg class="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
-                <span id="error-message" class="text-sm">尚未讀取到 data.json，目前維持「載入中...」狀態（請確認同目錄下存在 data.json 並透過網頁伺服器開啟）。</span>
-            </div>
-        </div>
-
-        <!-- 15 項數據卡片網格 -->
-        <main id="cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5">
-            <!-- 卡片將由 JavaScript 動態生成並填入 -->
-        </main>
-
-        <!-- 頁尾說明 -->
-        <footer class="mt-12 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-2">
-            <p>※ 融資減少、散戶多空比為負、外資空單回補、現貨量逾 8000 億皆自動判定為偏多紅燈。</p>
-            <p>TWSE / TAIFEX Dashboard</p>
-        </footer>
-
+        <h1 class="text-3xl font-bold text-white">台股每日盤後籌碼戰情室</h1>
+      </div>
+      <div class="flex items-center gap-3 bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-xl">
+        <span class="text-sm text-slate-400">🕒 最後更新時間：<strong id="update-time" class="text-slate-200">讀取中...</strong></span>
+        <button onclick="loadData()" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300" title="重新整理">🔄</button>
+      </div>
     </div>
 
-    <script>
-        /**
-         * 15 項籌碼指標設定與燈號判定規則
-         * ruleType:
-         *  - 'diff_up_red':     今日比前一日多 -> 紅燈；比前一日少 -> 綠燈（顯示增減）
-         *  - 'diff_down_red':   今日比前一日少 -> 紅燈；比前一日多 -> 綠燈（顯示增減，如融資餘額）
-         *  - 'threshold_8000':  超過 8000 -> 紅燈；低於 8000 -> 綠燈
-         *  - 'pos_red':         正數 -> 紅燈；負數 -> 綠燈
-         *  - 'pos_green':       正數 -> 綠燈；負數 -> 紅燈（如散戶多空比）
-         *  - 'neutral':         固定顯示灰燈
-         */
-        const METRICS_CONFIG = [
-            {
-                id: 1,
-                label: "台指結算",
-                category: "期貨指數",
-                ruleType: "diff_up_red",
-                diffUnit: "點",
-                keys: ["台指結算", "tx_settlement", "settlement"],
-                prevKeys: ["台指結算_前日", "前日台指結算", "tx_settlement_prev", "prev_tx_settlement"],
-                diffKeys: ["台指結算_增減", "台指結算增減", "tx_settlement_diff", "tx_settlement_change"]
-            },
-            {
-                id: 2,
-                label: "現貨量(億)",
-                category: "大盤量能",
-                ruleType: "threshold_8000",
-                keys: ["現貨量(億)", "現貨量", "spot_volume"]
-            },
-            {
-                id: 3,
-                label: "融資餘額(億)",
-                category: "散戶信用",
-                ruleType: "diff_down_red",
-                diffUnit: "億",
-                keys: ["融資餘額(億)", "融資餘額", "margin_balance"],
-                prevKeys: ["融資餘額_前日", "前日融資餘額", "margin_balance_prev", "prev_margin_balance"],
-                diffKeys: ["融資餘額_增減", "融資餘額增減", "margin_balance_diff", "margin_balance_change"]
-            },
-            {
-                id: 4,
-                label: "美元兌台幣",
-                category: "匯率動向",
-                ruleType: "neutral",
-                keys: ["美元兌台幣", "usd_twd", "exchange_rate"]
-            },
-            {
-                id: 5,
-                label: "外資現貨(億)",
-                category: "三大法人",
-                ruleType: "pos_red",
-                keys: ["外資現貨(億)", "外資現貨", "foreign_spot"]
-            },
-            {
-                id: 6,
-                label: "投信現貨(億)",
-                category: "三大法人",
-                ruleType: "pos_red",
-                keys: ["投信現貨(億)", "投信現貨", "trust_spot"]
-            },
-            {
-                id: 7,
-                label: "自營商現貨(億)",
-                category: "三大法人",
-                ruleType: "pos_red",
-                keys: ["自營商現貨(億)", "自營商現貨", "dealer_spot"]
-            },
-            {
-                id: 8,
-                label: "外資台指期未平倉",
-                category: "期貨籌碼",
-                ruleType: "diff_up_red",
-                diffUnit: "口",
-                keys: ["外資台指期未平倉", "foreign_tx_oi"],
-                prevKeys: ["外資台指期未平倉_前日", "前日外資台指期未平倉", "foreign_tx_oi_prev", "prev_foreign_tx_oi"],
-                diffKeys: ["外資台指期未平倉_增減", "外資台指期未平倉增減", "foreign_tx_oi_diff", "foreign_tx_oi_change"]
-            },
-            {
-                id: 9,
-                label: "五大淨額(口)",
-                category: "大額交易人",
-                ruleType: "pos_red",
-                keys: ["五大淨額(口)", "五大淨額", "top5_net"]
-            },
-            {
-                id: 10,
-                label: "十大淨額(口)",
-                category: "大額交易人",
-                ruleType: "pos_red",
-                keys: ["十大淨額(口)", "十大淨額", "top10_net"]
-            },
-            {
-                id: 11,
-                label: "P/C未平倉比",
-                category: "選擇權指標",
-                ruleType: "neutral",
-                isPercent: true,
-                keys: ["P/C未平倉比", "pc_ratio"]
-            },
-            {
-                id: 12,
-                label: "外資選擇權未平倉淨額(萬)",
-                category: "選擇權指標",
-                ruleType: "neutral",
-                keys: ["外資選擇權未平倉淨額(萬)", "外資選擇權未平倉淨額", "foreign_opt_net"]
-            },
-            {
-                id: 13,
-                label: "小台散戶多空比(%)",
-                category: "散戶指標",
-                ruleType: "pos_green",
-                isPercent: true,
-                keys: ["小台散戶多空比(%)", "小台散戶多空比", "mtx_retail_ratio"]
-            },
-            {
-                id: 14,
-                label: "微台散戶多空比(%)",
-                category: "散戶指標",
-                ruleType: "pos_green",
-                isPercent: true,
-                keys: ["微台散戶多空比(%)", "微台散戶多空比", "tmf_retail_ratio"]
-            },
-            {
-                id: 15,
-                label: "台積電美股ADR指數",
-                category: "美股連動",
-                ruleType: "pos_red",
-                keys: ["台積電美股ADR指數", "台積電ADR", "tsm_adr"]
+    <!-- 燈號說明列 -->
+    <div class="flex flex-wrap items-center justify-between bg-slate-900/70 border border-slate-800/80 px-4 py-3 rounded-xl mb-6 text-sm text-slate-300 gap-3">
+      <div class="flex items-center gap-4">
+        <span class="text-slate-400">戰情燈號判定：</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>紅燈（偏多訊號）</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>綠燈（偏空訊號）</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-500"></span>灰燈（中性參考）</span>
+      </div>
+      <div class="text-xs text-slate-500">資料來源：data.json</div>
+    </div>
+
+    <!-- 15張數據卡片區 -->
+    <div id="cards-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"></div>
+  </div>
+
+  <script>
+    const itemsConfig = [
+      { id: "01 · 期貨指數", key: "台指結算", rule: "diff_less_green" },
+      { id: "02 · 大盤量能", key: "現貨量(億)", rule: "vol_8000" },
+      { id: "03 · 散戶信用", key: "融資餘額(億)", rule: "diff_less_red" },
+      { id: "04 · 匯率動向", key: "美元兌台幣", rule: "neutral" },
+      { id: "05 · 三大法人", key: "外資現貨(億)", rule: "pos_red" },
+      { id: "06 · 三大法人", key: "投信現貨(億)", rule: "pos_red" },
+      { id: "07 · 三大法人", key: "自營商現貨(億)", rule: "pos_red" },
+      { id: "08 · 期貨籌碼", key: "外資台指期未平倉", rule: "diff_less_green" },
+      { id: "09 · 大額交易人", key: "五大淨額(口)", rule: "pos_red" },
+      { id: "10 · 大額交易人", key: "十大淨額(口)", rule: "pos_red" },
+      { id: "11 · 選擇權指標", key: "P/C未平倉比", rule: "neutral" },
+      { id: "12 · 選擇權指標", key: "外資選擇權未平倉淨額(萬)", rule: "neutral" },
+      { id: "13 · 散戶指標", key: "小台散戶多空比(%)", rule: "pos_green" },
+      { id: "14 · 散戶指標", key: "微台散戶多空比(%)", rule: "pos_green" },
+      { id: "15 · 美股連動", key: "台積電美股ADR指數", rule: "adr_change" }
+    ];
+
+    function parseNum(v) {
+      if (v === null || v === undefined) return NaN;
+      return parseFloat(String(v).replace(/[,%]/g, ""));
+    }
+
+    function getLight(rule, val, prev, change) {
+      const num = parseNum(val);
+      if (isNaN(num)) return "gray";
+      if (rule === "vol_8000") return num > 8000 ? "red" : "green";
+      if (rule === "pos_red") return num > 0 ? "red" : (num < 0 ? "green" : "gray");
+      if (rule === "pos_green") return num > 0 ? "green" : (num < 0 ? "red" : "gray");
+      if (rule === "diff_less_green" && !isNaN(parseNum(prev))) {
+        return num < parseNum(prev) ? "green" : (num > parseNum(prev) ? "red" : "gray");
+      }
+      if (rule === "diff_less_red" && !isNaN(parseNum(prev))) {
+        return num < parseNum(prev) ? "red" : (num > parseNum(prev) ? "green" : "gray");
+      }
+      if (rule === "adr_change" && !isNaN(parseNum(change))) {
+        return parseNum(change) > 0 ? "red" : (parseNum(change) < 0 ? "green" : "gray");
+      }
+      return "gray";
+    }
+
+    async function loadData() {
+      const grid = document.getElementById("cards-grid");
+      try {
+        const res = await fetch("data.json?t=" + Date.now());
+        const json = await res.json();
+        document.getElementById("update-time").textContent = json.update_time || "已更新";
+        const dataset = json.data || json;
+
+        grid.innerHTML = itemsConfig.map(item => {
+          const raw = dataset[item.key];
+          let val = "--", prev = null, change = null, subText = "";
+
+          if (raw !== undefined && raw !== null) {
+            if (typeof raw === "object") {
+              val = raw.value !== undefined ? raw.value : "--";
+              prev = raw.prev !== undefined ? raw.prev : null;
+              change = raw.change !== undefined ? raw.change : null;
+            } else {
+              val = raw;
             }
-        ];
+          }
 
-        /**
-         * 燈號與文字樣式定義
-         */
-        const LIGHT_STYLES = {
-            red: {
-                dot: "bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.95)] ring-2 ring-rose-500/30",
-                text: "text-rose-500",
-                title: "偏多訊號（紅燈）"
-            },
-            green: {
-                dot: "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.95)] ring-2 ring-emerald-400/30",
-                text: "text-emerald-400",
-                title: "偏空訊號（綠燈）"
-            },
-            gray: {
-                dot: "bg-slate-400 shadow-[0_0_8px_rgba(148,163,184,0.5)] ring-2 ring-slate-500/20",
-                text: "text-slate-100",
-                title: "中性狀態（灰燈）"
-            }
-        };
+          if (prev !== null && !isNaN(parseNum(val)) && !isNaN(parseNum(prev))) {
+            const diff = (parseNum(val) - parseNum(prev)).toFixed(2).replace(/\.00$/, "");
+            subText = `較前日: ${diff > 0 ? "+" + diff : diff}`;
+          } else if (change !== null && !isNaN(parseNum(change))) {
+            subText = `漲跌: ${change > 0 ? "+" + change : change}`;
+          }
 
-        /**
-         * 初始化 15 張卡片骨架（未讀到資料時預設顯示「載入中...」與灰燈）
-         */
-        function initCardsSkeleton() {
-            const grid = document.getElementById('cards-grid');
-            grid.innerHTML = '';
+          const light = getLight(item.rule, val, prev, change);
+          const lightClass = light === "red"
+            ? "bg-rose-500 shadow-[0_0_12px_#f43f5e]"
+            : light === "green"
+            ? "bg-emerald-500 shadow-[0_0_12px_#10b981]"
+            : "bg-slate-600";
+          const textClass = light === "red"
+            ? "text-rose-400"
+            : light === "green"
+            ? "text-emerald-400"
+            : "text-white";
 
-            METRICS_CONFIG.forEach((item) => {
-                const card = document.createElement('div');
-                card.id = `card-${item.id}`;
-                card.className = "bg-slate-900/85 border border-slate-800/90 hover:border-slate-700 rounded-2xl p-5 shadow-lg transition-all duration-200 flex flex-col justify-between group relative overflow-hidden";
-
-                card.innerHTML = `
-                    <!-- 卡片頂部：編號分類標籤 + 右上角發光狀態燈號 -->
-                    <div class="flex items-center justify-between gap-2 mb-3">
-                        <span class="text-xs font-medium px-2.5 py-0.5 rounded-md bg-slate-800/90 text-slate-400 border border-slate-700/60">
-                            ${String(item.id).padStart(2, '0')} · ${item.category}
-                        </span>
-                        <div class="flex items-center gap-1.5" title="狀態燈號">
-                            <span id="light-${item.id}" class="inline-block w-3.5 h-3.5 rounded-full bg-slate-500 shadow-[0_0_8px_rgba(100,116,139,0.5)] transition-all duration-300"></span>
-                        </div>
-                    </div>
-
-                    <!-- 卡片主體：指標名稱、數值與前日增減 -->
-                    <div>
-                        <h2 class="text-sm sm:text-base font-medium text-slate-300 group-hover:text-white transition-colors mb-2">
-                            ${item.label}
-                        </h2>
-                        <div class="flex flex-col gap-1">
-                            <p id="value-${item.id}" class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-400 animate-pulse">
-                                載入中...
-                            </p>
-                            <p id="diff-${item.id}" class="text-xs font-medium min-h-[1.125rem] text-slate-500"></p>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        /**
-         * 將字串或數字解析為純浮點數
-         */
-        function parseCleanNumber(val) {
-            if (val === undefined || val === null || val === '') return NaN;
-            if (typeof val === 'number') return val;
-            const cleaned = String(val).replace(/[,%\s億口萬元點]/g, '').trim();
-            return parseFloat(cleaned);
-        }
-
-        /**
-         * 格式化數字顯示（保留小數或加上千分位）
-         */
-        function formatNumberDisplay(rawVal, numVal, options = {}) {
-            const { forceSign = false, isPercent = false } = options;
-            if (typeof rawVal === 'string' && rawVal.trim() !== '') {
-                // 若原始字串已有 % 且為百分比欄位，直接回傳
-                if (isPercent && !rawVal.includes('%') && !isNaN(numVal)) {
-                    return `${rawVal.trim()}%`;
-                }
-                return rawVal.trim();
-            }
-
-            if (isNaN(numVal)) return '載入中...';
-
-            const formatted = numVal.toLocaleString('en-US', {
-                maximumFractionDigits: 2
-            });
-
-            const signPrefix = (forceSign && numVal > 0) ? '+' : '';
-            const percentSuffix = isPercent ? '%' : '';
-            return `${signPrefix}${formatted}${percentSuffix}`;
-        }
-
-        /**
-         * 從物件中依序尋找符合 keys 陣列的值，同時支援巢狀物件格式 { value, prev, diff }
-         */
-        function extractMetricData(payload, item) {
-            let rawMain = undefined;
-            for (const key of item.keys) {
-                if (Object.prototype.hasOwnProperty.call(payload, key)) {
-                    rawMain = payload[key];
-                    break;
-                }
-            }
-
-            // 支援物件形式，例如: "台指結算": { "value": 23150, "prev": 23000 } 或 { "current": 23150, "diff": 150 }
-            if (rawMain !== null && typeof rawMain === 'object' && !Array.isArray(rawMain)) {
-                const current = rawMain.value ?? rawMain.current ?? rawMain.today;
-                const prev = rawMain.prev ?? rawMain.previous ?? rawMain.yesterday;
-                const diff = rawMain.diff ?? rawMain.change;
-                return { current, prev, diff };
-            }
-
-            // 支援扁平化鍵值，例如: "台指結算": 23150, "台指結算_前日": 23000 或 "台指結算_增減": 150
-            let prev = undefined;
-            if (item.prevKeys) {
-                for (const pKey of item.prevKeys) {
-                    if (Object.prototype.hasOwnProperty.call(payload, pKey)) {
-                        prev = payload[pKey];
-                        break;
-                    }
-                }
-            }
-
-            let diff = undefined;
-            if (item.diffKeys) {
-                for (const dKey of item.diffKeys) {
-                    if (Object.prototype.hasOwnProperty.call(payload, dKey)) {
-                        diff = payload[dKey];
-                        break;
-                    }
-                }
-            }
-
-            return { current: rawMain, prev, diff };
-        }
-
-        /**
-         * 依據規則計算燈號 ('red' | 'green' | 'gray')、主顯示文字、以及增減副標文字
-         */
-        function evaluateMetric(item, extracted) {
-            const { current, prev, diff } = extracted;
-
-            if (current === undefined || current === null || current === '') {
-                return {
-                    isLoaded: false,
-                    light: 'gray',
-                    displayText: '載入中...',
-                    diffText: '',
-                    diffColorClass: 'text-slate-500'
-                };
-            }
-
-            const numVal = parseCleanNumber(current);
-            const numPrev = parseCleanNumber(prev);
-            let numDiff = parseCleanNumber(diff);
-
-            // 若未直接提供 diff，但有提供 prev 與 current，則自動計算 (今日 - 前日)
-            if (isNaN(numDiff) && !isNaN(numVal) && !isNaN(numPrev)) {
-                numDiff = Number((numVal - numPrev).toFixed(2));
-            }
-
-            let light = 'gray';
-            let diffText = '';
-            let diffColorClass = 'text-slate-400';
-
-            switch (item.ruleType) {
-                case 'diff_up_red': {
-                    // 1. 台指結算 & 8. 外資台指期未平倉：比前一天多亮紅燈，比前一天少亮綠燈
-                    if (!isNaN(numDiff)) {
-                        if (numDiff > 0) light = 'red';
-                        else if (numDiff < 0) light = 'green';
-                        else light = 'gray';
-
-                        const arrow = numDiff > 0 ? '▲' : (numDiff < 0 ? '▼' : '—');
-                        const sign = numDiff > 0 ? '+' : '';
-                        const unit = item.diffUnit ? ` ${item.diffUnit}` : '';
-                        diffText = `較前日 ${arrow} ${sign}${numDiff.toLocaleString('en-US', { maximumFractionDigits: 2 })}${unit}`;
-                        diffColorClass = light === 'red' ? 'text-rose-400' : (light === 'green' ? 'text-emerald-400' : 'text-slate-400');
-                    } else {
-                        diffText = '較前日：無前日資料';
-                    }
-                    break;
-                }
-
-                case 'diff_down_red': {
-                    // 3. 融資餘額(億)：比前一天少亮紅燈，比前一天多亮綠燈
-                    if (!isNaN(numDiff)) {
-                        if (numDiff < 0) light = 'red';
-                        else if (numDiff > 0) light = 'green';
-                        else light = 'gray';
-
-                        const arrow = numDiff > 0 ? '▲' : (numDiff < 0 ? '▼' : '—');
-                        const sign = numDiff > 0 ? '+' : '';
-                        const unit = item.diffUnit ? ` ${item.diffUnit}` : '';
-                        diffText = `較前日 ${arrow} ${sign}${numDiff.toLocaleString('en-US', { maximumFractionDigits: 2 })}${unit}`;
-                        diffColorClass = light === 'red' ? 'text-rose-400' : (light === 'green' ? 'text-emerald-400' : 'text-slate-400');
-                    } else {
-                        diffText = '較前日：無前日資料';
-                    }
-                    break;
-                }
-
-                case 'threshold_8000': {
-                    // 2. 現貨量(億)：低於 8000 億亮綠燈，超過 8000 億亮紅燈
-                    if (!isNaN(numVal)) {
-                        if (numVal > 8000) {
-                            light = 'red';
-                            diffText = '大於 8,000 億門檻';
-                            diffColorClass = 'text-rose-400/90';
-                        } else if (numVal < 8000) {
-                            light = 'green';
-                            diffText = '低於 8,000 億門檻';
-                            diffColorClass = 'text-emerald-400/90';
-                        } else {
-                            light = 'gray';
-                            diffText = '持平 8,000 億門檻';
-                        }
-                    }
-                    break;
-                }
-
-                case 'pos_red': {
-                    // 5,6,7 三大法人現貨 / 9,10 五大十大淨額 / 15 台積電ADR：正數亮紅燈，負數亮綠燈
-                    if (!isNaN(numVal)) {
-                        if (numVal > 0) light = 'red';
-                        else if (numVal < 0) light = 'green';
-                        else light = 'gray';
-                    }
-                    break;
-                }
-
-                case 'pos_green': {
-                    // 13. 小台散戶多空比(%) & 14. 微台散戶多空比(%)：正數亮綠燈，負數亮紅燈
-                    if (!isNaN(numVal)) {
-                        if (numVal > 0) light = 'green';
-                        else if (numVal < 0) light = 'red';
-                        else light = 'gray';
-                    }
-                    break;
-                }
-
-                case 'neutral':
-                default: {
-                    // 4. 美元兌台幣 / 11. P/C未平倉比 / 12. 外資選擇權未平倉淨額(萬)：灰燈
-                    light = 'gray';
-                    break;
-                }
-            }
-
-            const shouldForceSign = (item.ruleType === 'pos_red' || item.ruleType === 'pos_green');
-            const displayText = formatNumberDisplay(current, numVal, {
-                forceSign: shouldForceSign,
-                isPercent: Boolean(item.isPercent)
-            });
-
-            return {
-                isLoaded: true,
-                light,
-                displayText,
-                diffText,
-                diffColorClass
-            };
-        }
-
-        /**
-         * 讀取同目錄下的 data.json 並更新畫面
-         */
-        async function fetchChipData() {
-            const refreshIcon = document.getElementById('refresh-icon');
-            const errorBanner = document.getElementById('error-banner');
-            const lastUpdatedEl = document.getElementById('last-updated');
-
-            refreshIcon.classList.add('animate-spin');
-            errorBanner.classList.add('hidden');
-
-            try {
-                // 加上時間戳記防止瀏覽器快取舊檔案
-                const response = await fetch(`data.json?t=${new Date().getTime()}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP 狀態碼: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const payload = data.metrics || data.items || data;
-
-                // 更新頂部最後更新時間
-                const updatedTime = data.last_updated || data.updated_at || data['最後更新時間'] || new Date().toLocaleString('zh-TW', { hour12: false });
-                lastUpdatedEl.textContent = updatedTime;
-
-                // 依序計算 15 項指標並更新卡片 UI
-                METRICS_CONFIG.forEach((item) => {
-                    const valueEl = document.getElementById(`value-${item.id}`);
-                    const lightEl = document.getElementById(`light-${item.id}`);
-                    const diffEl = document.getElementById(`diff-${item.id}`);
-
-                    const extracted = extractMetricData(payload, item);
-                    const result = evaluateMetric(item, extracted);
-                    const style = LIGHT_STYLES[result.light] || LIGHT_STYLES.gray;
-
-                    if (result.isLoaded) {
-                        valueEl.classList.remove('animate-pulse', 'text-slate-400', 'text-rose-500', 'text-emerald-400', 'text-slate-100');
-                        valueEl.classList.add(style.text);
-                        valueEl.textContent = result.displayText;
-
-                        lightEl.className = `inline-block w-3.5 h-3.5 rounded-full transition-all duration-300 ${style.dot}`;
-                        lightEl.title = style.title;
-
-                        diffEl.textContent = result.diffText;
-                        diffEl.className = `text-xs font-medium min-h-[1.125rem] ${result.diffColorClass}`;
-                    }
-                });
-
-            } catch (error) {
-                console.error('讀取 data.json 失敗:', error);
-                errorBanner.classList.remove('hidden');
-            } finally {
-                setTimeout(() => {
-                    refreshIcon.classList.remove('animate-spin');
-                }, 400);
-            }
-        }
-
-        // 頁面載入後初始化骨架並抓取 data.json
-        window.addEventListener('DOMContentLoaded', () => {
-            initCardsSkeleton();
-            fetchChipData();
-        });
-    </script>
+          return `
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-md">${item.id}</span>
+                <span class="w-3.5 h-3.5 rounded-full ${lightClass}"></span>
+              </div>
+              <div>
+                <div class="text-sm text-slate-300 mb-1">${item.key}</div>
+                <div class="text-2xl font-bold tracking-tight ${textClass}">${val}</div>
+                <div class="text-xs text-slate-500 mt-1 h-4">${subText}</div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      } catch (e) {
+        document.getElementById("update-time").textContent = "讀取失敗";
+      }
+    }
+    loadData();
+  </script>
 </body>
 </html>
