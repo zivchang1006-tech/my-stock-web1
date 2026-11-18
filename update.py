@@ -8,7 +8,10 @@ tw_tz = timezone(timedelta(hours=8))
 now_dt = datetime.now(tw_tz)
 now_str = now_dt.strftime("%Y-%m-%d %H:%M")
 start_date = (now_dt - timedelta(days=10)).strftime("%Y-%m-%d")
-
+eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsImVtYWlsIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsInRva2VuX3ZlcnNpb24iOjB9.TVG3yuVUINXfZLW8vctJ33W_M3-WB_6Uaq81L1DK7Dk
+# 👇 請把雙引號裡面的字，換成你剛註冊拿到的 FinMind Token
+FINMIND_TOKEN = "把你的FinMind_Token貼在這裡"
+eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsImVtYWlsIjoieml2Y2hhbmcxMDA2QGdtYWlsLmNvbSIsInRva2VuX3ZlcnNpb24iOjB9.TVG3yuVUINXfZLW8vctJ33W_M3-WB_6Uaq81L1DK7Dk
 try:
     with open("data.json", "r", encoding="utf-8") as f:
         old_data = json.load(f).get("data", {})
@@ -22,49 +25,49 @@ def safe_float(val, default=None):
     except Exception:
         return default
 
-def get_finmind(dataset, data_id="TAIEX"):
-    url = f"https://finmindtrade.com{dataset}&data_id={data_id}&start_date={start_date}"
+def get_finmind(dataset, data_id=""):
+    url = "https://finmindtrade.com"
+    params = {
+        "dataset": dataset,
+        "start_date": start_date,
+        "token": FINMIND_TOKEN
+    }
+    if data_id:
+        params["data_id"] = data_id
     try:
-        r = requests.get(url, timeout=10).json()
+        r = requests.get(url, params=params, timeout=12).json()
         if r.get("msg") == "success" and r.get("data"):
             return r["data"]
         else:
-            print(f"⚠️ FinMind({dataset}/{data_id}) 回傳訊息:", r.get("msg"))
+            print(f"⚠️ {dataset} 回傳:", r.get("msg"))
     except Exception as e:
-        print(f"⚠️ FinMind({dataset}/{data_id}) 連線錯誤:", e)
+        print(f"⚠️ {dataset} 錯誤:", e)
     return []
 
 data = {}
-logs = []
 
-# 1. Yahoo 財經：台積電 ADR (TSM) & 美元兌台幣 (TWD=X)
+# 1. 台積電 ADR & 美元兌台幣
 try:
     tsm = yf.Ticker("TSM").history(period="5d").dropna(subset=["Close"])
     if len(tsm) >= 2:
-        val = safe_float(tsm["Close"].iloc[-1])
-        prev_v = safe_float(tsm["Close"].iloc[-2])
+        val, prev_v = safe_float(tsm["Close"].iloc[-1]), safe_float(tsm["Close"].iloc[-2])
         if val and prev_v:
             data["台積電美股ADR指數"] = {"value": round(val, 2), "change": round(val - prev_v, 2)}
-            logs.append(f"✅ 台積電ADR: {round(val, 2)}")
-except Exception as e:
-    logs.append(f"❌ 台積電ADR: {e}")
+except Exception:
+    pass
 
 try:
     usd = yf.Ticker("TWD=X").history(period="5d").dropna(subset=["Close"])
-    if len(usd) >= 1:
-        val = safe_float(usd["Close"].iloc[-1])
-        if val:
-            data["美元兌台幣"] = {"value": round(val, 3)}
-            logs.append(f"✅ 美元兌台幣: {round(val, 3)}")
-except Exception as e:
-    logs.append(f"❌ 美元兌台幣: {e}")
+    if len(usd) >= 1 and safe_float(usd["Close"].iloc[-1]):
+        data["美元兌台幣"] = {"value": round(safe_float(usd["Close"].iloc[-1]), 3)}
+except Exception:
+    pass
 
-# 2. FinMind (帶入 data_id=TAIEX)：三大法人現貨買賣超 (單位：億)
-inst_rows = get_finmind("TaiwanStockTotalInstitutionalInvestors", "TAIEX")
+# 2. 三大法人現貨買賣超 (億)
+inst_rows = get_finmind("TaiwanStockTotalInstitutionalInvestors")
 if inst_rows:
-    last_date = inst_rows[-1]["date"]
-    day_rows = [x for x in inst_rows if x["date"] == last_date]
-    for x in day_rows:
+    last_d = inst_rows[-1]["date"]
+    for x in [r for r in inst_rows if r["date"] == last_d]:
         net_yi = round((safe_float(x.get("buy"), 0) - safe_float(x.get("sell"), 0)) / 1e8, 2)
         name = x.get("name", "")
         if "Foreign_Investor" in name:
@@ -73,54 +76,54 @@ if inst_rows:
             data["投信現貨(億)"] = {"value": net_yi}
         elif "Dealer_self" in name:
             data["自營商現貨(億)"] = {"value": net_yi}
-    logs.append(f"✅ 三大法人現貨({last_date}): 外資{data.get('外資現貨(億)',{}).get('value')}億")
 
-# 3. FinMind (帶入 data_id=TAIEX)：大盤現貨成交量 & 融資餘額 (單位：億)
+# 3. 大盤現貨成交量 & 融資餘額 (億)
 mkt_rows = get_finmind("TaiwanStockPrice", "TAIEX")
 if mkt_rows:
     vol_yi = round(safe_float(mkt_rows[-1].get("Trading_money"), 0) / 1e8, 2)
     if vol_yi > 0:
         data["現貨量(億)"] = {"value": vol_yi}
-        logs.append(f"✅ 現貨量({mkt_rows[-1]['date']}): {vol_yi}億")
 
-margin_rows = get_finmind("TaiwanStockTotalMarginPurchaseShortSale", "TAIEX")
+margin_rows = get_finmind("TaiwanStockTotalMarginPurchaseShortSale")
 if margin_rows:
     m_list = [x for x in margin_rows if x.get("name") == "MarginPurchaseMoney"]
     if len(m_list) >= 2:
-        prev_m = round(safe_float(m_list[-2].get("TodayBalance"), 0) / 1e5, 2)
-        curr_m = round(safe_float(m_list[-1].get("TodayBalance"), 0) / 1e5, 2)
-        data["融資餘額(億)"] = {"value": curr_m, "prev": prev_m}
-        logs.append(f"✅ 融資餘額: {curr_m}億 (前日:{prev_m})")
+        data["融資餘額(億)"] = {
+            "value": round(safe_float(m_list[-1].get("TodayBalance"), 0) / 1e5, 2),
+            "prev": round(safe_float(m_list[-2].get("TodayBalance"), 0) / 1e5, 2)
+        }
 
-# 4. FinMind (帶入 data_id=TX)：台指期結算/收盤價
+# 4. 台指結算/收盤價
 fut_rows = get_finmind("TaiwanFuturesDaily", "TX")
 if fut_rows:
-    reg_rows = [x for x in fut_rows if x.get("trading_session") == "position"]
-    # 依日期分組取近月契約最大成交量
-    dates = sorted(list(set(x["date"] for x in reg_rows)))
+    reg = [x for x in fut_rows if x.get("trading_session") == "position"]
+    dates = sorted(list(set(x["date"] for x in reg)))
     if len(dates) >= 2:
-        d_prev, d_curr = dates[-2], dates[-1]
-        c_rows = [x for x in reg_rows if x["date"] == d_curr]
-        p_rows = [x for x in reg_rows if x["date"] == d_prev]
-        c_main = max(c_rows, key=lambda x: safe_float(x.get("volume"), 0))
-        p_main = max(p_rows, key=lambda x: safe_float(x.get("volume"), 0))
-        c_p = int(safe_float(c_main.get("close"), 0))
-        p_p = int(safe_float(p_main.get("close"), 0))
-        if c_p > 0:
-            data["台指結算"] = {"value": c_p, "prev": p_p}
-            logs.append(f"✅ 台指結算({d_curr}): {c_p} (前日:{p_p})")
+        c_main = max([x for x in reg if x["date"] == dates[-1]], key=lambda x: safe_float(x.get("volume"), 0))
+        p_main = max([x for x in reg if x["date"] == dates[-2]], key=lambda x: safe_float(x.get("volume"), 0))
+        data["台指結算"] = {"value": int(safe_float(c_main.get("close"), 0)), "prev": int(safe_float(p_main.get("close"), 0))}
 
-# 5. FinMind (帶入 data_id=TX)：外資台指期未平倉
+# 5. 外資台指期未平倉
 fut_inst = get_finmind("TaiwanFuturesInstitutionalInvestors", "TX")
 if fut_inst:
     f_list = [x for x in fut_inst if "外資" in x.get("institutional_investors", "")]
     if len(f_list) >= 2:
-        curr_oi = int(safe_float(f_list[-1].get("long_open_interest_balance_volume"), 0) - safe_float(f_list[-1].get("short_open_interest_balance_volume"), 0))
-        prev_oi = int(safe_float(f_list[-2].get("long_open_interest_balance_volume"), 0) - safe_float(f_list[-2].get("short_open_interest_balance_volume"), 0))
-        data["外資台指期未平倉"] = {"value": curr_oi, "prev": prev_oi}
-        logs.append(f"✅ 外資台指期未平倉: {curr_oi} (前日:{prev_oi})")
+        data["外資台指期未平倉"] = {
+            "value": int(safe_float(f_list[-1].get("long_open_interest_balance_volume"), 0) - safe_float(f_list[-1].get("short_open_interest_balance_volume"), 0)),
+            "prev": int(safe_float(f_list[-2].get("long_open_interest_balance_volume"), 0) - safe_float(f_list[-2].get("short_open_interest_balance_volume"), 0))
+        }
 
-# 6. FinMind (帶入 MTX 與 TMF)：小台與微台散戶多空比(%)
+# 6. 五大、十大特定法人淨額(口)
+top_rows = get_finmind("TaiwanFuturesOpenInterestLargeTraders", "TX")
+if top_rows:
+    all_contract = [x for x in top_rows if "999999" in str(x.get("contract_date", "")) or "所有" in str(x.get("contract_date", ""))]
+    target_row = all_contract[-1] if all_contract else top_rows[-1]
+    t5 = int(safe_float(target_row.get("top5_specific_buy_open_interest"), 0) - safe_float(target_row.get("top5_specific_sell_open_interest"), 0))
+    t10 = int(safe_float(target_row.get("top10_specific_buy_open_interest"), 0) - safe_float(target_row.get("top10_specific_sell_open_interest"), 0))
+    data["五大淨額(口)"] = {"value": t5}
+    data["十大淨額(口)"] = {"value": t10}
+
+# 7. 小台與微台散戶多空比(%)
 for code, key_name in [("MTX", "小台散戶多空比(%)"), ("TMF", "微台散戶多空比(%)")]:
     f_all = get_finmind("TaiwanFuturesDaily", code)
     i_all = get_finmind("TaiwanFuturesInstitutionalInvestors", code)
@@ -129,11 +132,9 @@ for code, key_name in [("MTX", "小台散戶多空比(%)"), ("TMF", "微台散�
         tot_oi = sum(safe_float(x.get("open_interest"), 0) for x in f_all if x["date"] == last_d and x.get("trading_session") == "position")
         inst_net = sum(safe_float(x.get("long_open_interest_balance_volume"), 0) - safe_float(x.get("short_open_interest_balance_volume"), 0) for x in i_all if x["date"] == last_d)
         if tot_oi > 0:
-            ratio = round((-inst_net / tot_oi) * 100, 2)
-            data[key_name] = {"value": ratio}
-            logs.append(f"✅ {key_name}: {ratio}%")
+            data[key_name] = {"value": round((-inst_net / tot_oi) * 100, 2)}
 
-# 7. FinMind (帶入 data_id=TXO)：選擇權 P/C 未平倉比 & 外資選擇權未平倉淨額(萬)
+# 8. P/C未平倉比 & 外資選擇權未平倉淨額(萬)
 opt_daily = get_finmind("TaiwanOptionDaily", "TXO")
 if opt_daily:
     last_d = opt_daily[-1]["date"]
@@ -141,9 +142,7 @@ if opt_daily:
     put_oi = sum(safe_float(x.get("open_interest"), 0) for x in day_opt if x.get("call_put") == "put")
     call_oi = sum(safe_float(x.get("open_interest"), 0) for x in day_opt if x.get("call_put") == "call")
     if call_oi > 0:
-        pc_ratio = round((put_oi / call_oi) * 100, 2)
-        data["P/C未平倉比"] = {"value": f"{pc_ratio}%"}
-        logs.append(f"✅ P/C未平倉比: {pc_ratio}%")
+        data["P/C未平倉比"] = {"value": f"{round((put_oi / call_oi) * 100, 2)}%"}
 
 opt_inst = get_finmind("TaiwanOptionInstitutionalInvestors", "TXO")
 if opt_inst:
@@ -151,11 +150,8 @@ if opt_inst:
     f_opt = [x for x in opt_inst if x["date"] == last_d and "外資" in x.get("institutional_investors", "")]
     if f_opt:
         net_amt = sum(safe_float(x.get("long_open_interest_balance_amount"), 0) - safe_float(x.get("short_open_interest_balance_amount"), 0) for x in f_opt)
-        val_wan = round(net_amt / 10000, 0)
-        data["外資選擇權未平倉淨額(萬)"] = {"value": val_wan}
-        logs.append(f"✅ 外資選擇權未平倉淨額: {val_wan}萬")
+        data["外資選擇權未平倉淨額(萬)"] = {"value": round(net_amt / 10000, 0)}
 
-# 補齊任何暫時未抓到的欄位
 all_keys = [
     "台指結算", "現貨量(億)", "融資餘額(億)", "美元兌台幣",
     "外資現貨(億)", "投信現貨(億)", "自營商現貨(億)",
@@ -170,9 +166,4 @@ for k in all_keys:
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump({"update_time": now_str, "data": data}, f, ensure_ascii=False, indent=2, allow_nan=False)
 
-print("=== 執行診斷報告 ===")
-for line in logs:
-    print(line)
-print("✅ 更新完成時間:", now_str)
-
-
+print("✅ 全部更新完成！時間:", now_str)
