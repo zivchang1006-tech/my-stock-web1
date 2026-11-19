@@ -1,47 +1,170 @@
 <!DOCTYPE html>
-<html lang="zh-TW" class="dark">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>台股每日盤後籌碼戰情室</title>
-  <script src="https://tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #020617;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      padding: 20px;
+      line-height: 1.4;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    
+    /* 頂部標題列 */
+    .header {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid #1e293b; padding-bottom: 16px; margin-bottom: 16px; gap: 12px;
+    }
+    .sub-title { font-size: 11px; color: #94a3b8; letter-spacing: 1.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #f43f5e; display: inline-block; }
+    h1 { font-size: 24px; font-weight: 700; color: #ffffff; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .badge-box {
+      background: #0f172a; border: 1px solid #1e293b; padding: 8px 14px; border-radius: 10px;
+      font-size: 13px; color: #cbd5e1; display: flex; align-items: center; gap: 8px;
+    }
+    select {
+      background: #0f172a; color: #f8fafc; border: none; font-size: 13px; font-weight: 600; cursor: pointer; outline: none;
+    }
+    button.icon-btn {
+      background: #1e293b; border: none; color: #e2e8f0; padding: 4px 8px; border-radius: 6px; cursor: pointer;
+    }
+    button.icon-btn:hover { background: #334155; }
+
+    /* 燈號說明列 */
+    .legend {
+      background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b; padding: 10px 16px;
+      border-radius: 10px; margin-bottom: 16px; font-size: 12px; color: #cbd5e1;
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .legend-items { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .dot-red { background: #f43f5e; box-shadow: 0 0 8px #f43f5e; }
+    .dot-green { background: #10b981; box-shadow: 0 0 8px #10b981; }
+    .dot-gray { background: #64748b; }
+
+    /* 縮小版 15 張卡片網格 */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 1100px) { .cards-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 640px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .card {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
+      padding: 12px 14px; transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #334155; }
+    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .tag { background: #1e293b; color: #94a3b8; font-size: 11px; padding: 2px 7px; border-radius: 5px; }
+    .card-title { font-size: 12px; color: #cbd5e1; margin-bottom: 4px; }
+    .card-val { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+    .card-sub { font-size: 11px; color: #64748b; margin-top: 3px; height: 15px; }
+    .text-red { color: #fb7185; }
+    .text-green { color: #34d399; }
+    .text-white { color: #f8fafc; }
+
+    /* 每日歷史統計總表（仿第二張圖樣式） */
+    .section-title { font-size: 16px; font-weight: 700; color: #f8fafc; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .table-wrap {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
+      overflow-x: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; text-align: center; }
+    thead { background: #1e293b; color: #94a3b8; }
+    th { padding: 10px 8px; font-weight: 600; border-bottom: 1px solid #334155; }
+    td { padding: 10px 8px; border-bottom: 1px solid #1e293b; color: #e2e8f0; }
+    tbody tr:hover { background: rgba(30, 41, 59, 0.6); }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
+      border-radius: 999px; font-size: 11px; font-weight: 600;
+    }
+    .pill-bull { background: rgba(244, 63, 94, 0.15); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); }
+    .pill-bear { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .pill-neu { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+    .btn-detail {
+      background: #3b82f6; color: #fff; border: none; padding: 4px 10px;
+      border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: 600;
+    }
+    .btn-detail:hover { background: #2563eb; }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
-  <div class="max-w-7xl mx-auto">
-    <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-6 mb-6 gap-4">
+<body>
+  <div class="container">
+    <!-- 頂部標題 -->
+    <div class="header">
       <div>
-        <div class="flex items-center gap-2 text-xs text-slate-400 tracking-widest mb-1">
-          <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-          TWSE / TAIFEX DAILY CHIP ANALYTICS
-        </div>
-        <h1 class="text-3xl font-bold text-white">台股每日盤後籌碼戰情室</h1>
+        <div class="sub-title"><span class="pulse-dot"></span>TWSE / TAIFEX DAILY CHIP ANALYTICS</div>
+        <h1>台股每日盤後籌碼戰情室</h1>
       </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <!-- 歷史日期選擇器 -->
-        <div class="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl">
-          <span class="text-sm text-slate-400">📅 歷史紀錄：</span>
-          <select id="date-selector" onchange="onDateChange()" class="bg-slate-900 text-slate-100 text-sm font-semibold focus:outline-none cursor-pointer">
+      <div class="controls">
+        <div class="badge-box">
+          <span>📅 歷史紀錄：</span>
+          <select id="date-selector" onchange="onDateChange()">
             <option value="latest">最新盤後數據</option>
           </select>
         </div>
-        <div class="flex items-center gap-3 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl">
-          <span class="text-sm text-slate-400">🕒 更新時間：<strong id="update-time" class="text-slate-200">讀取中...</strong></span>
-          <button onclick="initApp()" class="p-1 hover:bg-slate-800 rounded-lg text-slate-300" title="重新整理">🔄</button>
+        <div class="badge-box">
+          <span>🕒 更新時間：<strong id="update-time">讀取中...</strong></span>
+          <button class="icon-btn" onclick="initApp()" title="重新整理">🔄</button>
         </div>
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between bg-slate-900/70 border border-slate-800/80 px-4 py-3 rounded-xl mb-6 text-sm text-slate-300 gap-3">
-      <div class="flex items-center gap-4">
-        <span class="text-slate-400">戰情燈號判定：</span>
-        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>紅燈（偏多訊號）</span>
-        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>綠燈（偏空訊號）</span>
-        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-500"></span>灰燈（中性參考）</span>
+    <!-- 燈號說明 -->
+    <div class="legend">
+      <div class="legend-items">
+        <span style="color:#94a3b8;">戰情燈號判定：</span>
+        <span><span class="dot dot-red"></span>紅燈（偏多訊號）</span>
+        <span><span class="dot dot-green"></span>綠燈（偏空訊號）</span>
+        <span><span class="dot dot-gray"></span>灰燈（中性參考）</span>
       </div>
-      <div class="text-xs text-slate-500">支援每日歷史數據自動存檔</div>
+      <div style="color:#64748b;">每日 16:30 自動更新並寫入歷史總表</div>
     </div>
 
-    <div id="cards-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"></div>
+    <!-- 15 張縮小版卡片 -->
+    <div id="cards-grid" class="cards-grid"></div>
+
+    <!-- 每日統計歷史總表 -->
+    <div class="section-title">📊 每日籌碼統計歷史總表</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>台指結算</th>
+            <th>現貨量(億)</th>
+            <th>融資餘額</th>
+            <th>美元台幣</th>
+            <th>外資現貨</th>
+            <th>投信現貨</th>
+            <th>自營商</th>
+            <th>外資期未平倉</th>
+            <th>五大淨額</th>
+            <th>十大淨額</th>
+            <th>P/C比</th>
+            <th>外資選(萬)</th>
+            <th>小台散戶</th>
+            <th>微台散戶</th>
+            <th>台積ADR</th>
+            <th>趨勢判定</th>
+            <th>綜合分數</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody">
+          <tr><td colspan="19" style="padding:20px; color:#64748b;">正在載入歷史統計資料...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <script>
@@ -89,6 +212,19 @@
       return "gray";
     }
 
+    function calcTrendScore(dataset) {
+      let score = 0;
+      itemsConfig.forEach(item => {
+        const raw = dataset[item.key] || {};
+        const light = getLight(item.rule, raw.value, raw.prev, raw.change);
+        if (light === "red") score += 1;
+        if (light === "green") score -= 1;
+      });
+      if (score >= 2) return { label: "區間偏多", cls: "pill-bull", dot: "dot-red", score: "+" + score };
+      if (score <= -2) return { label: "區間偏空", cls: "pill-bear", dot: "dot-green", score: String(score) };
+      return { label: "中性觀望", cls: "pill-neu", dot: "dot-gray", score: score > 0 ? "+" + score : String(score) };
+    }
+
     function renderCards(record) {
       if (!record) return;
       document.getElementById("update-time").textContent = record.update_time || "已更新";
@@ -97,81 +233,3 @@
 
       grid.innerHTML = itemsConfig.map(item => {
         const raw = dataset[item.key];
-        let val = "--", prev = null, change = null, subText = "";
-
-        if (raw !== undefined && raw !== null) {
-          if (typeof raw === "object") {
-            val = raw.value !== undefined && raw.value !== null ? raw.value : "--";
-            prev = raw.prev !== undefined ? raw.prev : null;
-            change = raw.change !== undefined ? raw.change : null;
-          } else {
-            val = raw;
-          }
-        }
-
-        if (prev !== null && !isNaN(parseNum(val)) && !isNaN(parseNum(prev))) {
-          const diff = (parseNum(val) - parseNum(prev)).toFixed(2).replace(/\.00$/, "");
-          subText = `較前日: ${diff > 0 ? "+" + diff : diff}`;
-        } else if (change !== null && !isNaN(parseNum(change))) {
-          subText = `漲跌: ${change > 0 ? "+" + change : change}`;
-        }
-
-        const light = getLight(item.rule, val, prev, change);
-        const lightClass = light === "red"
-          ? "bg-rose-500 shadow-[0_0_12px_#f43f5e]"
-          : light === "green"
-          ? "bg-emerald-500 shadow-[0_0_12px_#10b981]"
-          : "bg-slate-600";
-        const textClass = light === "red"
-          ? "text-rose-400"
-          : light === "green"
-          ? "text-emerald-400"
-          : "text-white";
-
-        return `
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-md">${item.id}</span>
-              <span class="w-3.5 h-3.5 rounded-full ${lightClass}"></span>
-            </div>
-            <div>
-              <div class="text-sm text-slate-300 mb-1">${item.key}</div>
-              <div class="text-2xl font-bold tracking-tight ${textClass}">${val}</div>
-              <div class="text-xs text-slate-500 mt-1 h-4">${subText}</div>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function onDateChange() {
-      const val = document.getElementById("date-selector").value;
-      if (val === "latest") {
-        renderCards(latestRecord);
-      } else if (historyRecords[val]) {
-        renderCards(historyRecords[val]);
-      }
-    }
-
-    async function initApp() {
-      try {
-        const res = await fetch("data.json?t=" + Date.now());
-        latestRecord = await res.json();
-        renderCards(latestRecord);
-
-        const hRes = await fetch("history.json?t=" + Date.now());
-        if (hRes.ok) {
-          historyRecords = await hRes.json();
-          const selector = document.getElementById("date-selector");
-          const dates = Object.keys(historyRecords).sort().reverse();
-          selector.innerHTML = `<option value="latest">最新盤後數據</option>` +
-            dates.map(d => `<option value="${d}">${d} 盤後存檔</option>`).join("");
-        }
-      } catch (e) {
-        document.getElementById("update-time").textContent = "讀取失敗";
-      }
-    }
-    initApp();
-  </script>
-</body>
-</html>
