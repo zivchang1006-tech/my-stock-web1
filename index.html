@@ -1,225 +1,366 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>台股每日盤後籌碼戰情室</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #070b14;
+      --panel: #0e1626;
+      --panel-2: #131e33;
+      --border: rgba(148, 163, 184, 0.16);
+      --text: #e5edf7;
+      --muted: #8fa1bc;
+      --red: #ff4d67;
+      --red-bg: rgba(255, 77, 103, 0.14);
+      --green: #16c784;
+      --green-bg: rgba(22, 199, 132, 0.14);
+      --gray: #64748b;
+      --gray-bg: rgba(100, 116, 139, 0.16);
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      background-color: #020617;
-      color: #f1f5f9;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
-      padding: 20px;
-      line-height: 1.4;
+      margin: 0;
+      padding: 16px;
+      background: radial-gradient(circle at top, #0f1b33 0%, var(--bg) 55%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      font-size: 13px;
+      line-height: 1.45;
     }
-    .container { max-width: 1400px; margin: 0 auto; }
-    .header {
-      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
-      border-bottom: 1px solid #1e293b; padding-bottom: 16px; margin-bottom: 16px; gap: 12px;
+
+    .container {
+      max-width: 1520px;
+      margin: 0 auto;
     }
-    .sub-title { font-size: 11px; color: #94a3b8; letter-spacing: 1.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #f43f5e; display: inline-block; }
-    h1 { font-size: 24px; font-weight: 700; color: #ffffff; }
-    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-    .badge-box {
-      background: #0f172a; border: 1px solid #1e293b; padding: 8px 14px; border-radius: 10px;
-      font-size: 13px; color: #cbd5e1; display: flex; align-items: center; gap: 8px;
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
     }
-    select {
-      background: #0f172a; color: #f8fafc; border: none; font-size: 13px; font-weight: 600; cursor: pointer; outline: none;
+
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    button.icon-btn {
-      background: #1e293b; border: none; color: #e2e8f0; padding: 4px 8px; border-radius: 6px; cursor: pointer;
+
+    .dot-live {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--red);
+      display: inline-block;
     }
-    button.icon-btn:hover { background: #334155; }
+
+    h1 {
+      margin: 2px 0 0;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pill-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    select, button {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    button:hover, select:hover {
+      border-color: var(--accent);
+    }
+
     .legend {
-      background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b; padding: 10px 16px;
-      border-radius: 10px; margin-bottom: 16px; font-size: 12px; color: #cbd5e1;
-      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
-    }
-    .legend-items { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    .dot-red { background: #f43f5e; box-shadow: 0 0 8px #f43f5e; }
-    .dot-green { background: #10b981; box-shadow: 0 0 8px #10b981; }
-    .dot-gray { background: #64748b; }
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
       gap: 10px;
-      margin-bottom: 28px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: var(--muted);
     }
-    @media (max-width: 1100px) { .cards-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 640px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .legend-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .badge-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
     .card {
-      background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
-      padding: 12px 14px; transition: border-color 0.2s;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 96px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
-    .card:hover { border-color: #334155; }
-    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .tag { background: #1e293b; color: #94a3b8; font-size: 11px; padding: 2px 7px; border-radius: 5px; }
-    .card-title { font-size: 12px; color: #cbd5e1; margin-bottom: 4px; }
-    .card-val { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
-    .card-sub { font-size: 11px; color: #64748b; margin-top: 3px; height: 15px; }
-    .text-red { color: #fb7185; }
-    .text-green { color: #34d399; }
-    .text-white { color: #f8fafc; }
-    .section-title { font-size: 16px; font-weight: 700; color: #f8fafc; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .tag {
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--panel-2);
+      padding: 2px 6px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .signal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .sig-red { background: var(--red); box-shadow: 0 0 8px rgba(255, 77, 103, 0.5); }
+    .sig-green { background: var(--green); box-shadow: 0 0 8px rgba(22, 199, 132, 0.45); }
+    .sig-gray { background: var(--gray); }
+
+    .metric-name {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .metric-val {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .val-red { color: var(--red); }
+    .val-green { color: var(--green); }
+    .val-neutral { color: var(--text); }
+
+    .metric-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .table-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .table-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .table-title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
     .table-wrap {
-      background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
-      overflow-x: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      width: 100%;
+      overflow-x: auto;
     }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; text-align: center; }
-    thead { background: #1e293b; color: #94a3b8; }
-    th { padding: 10px 8px; font-weight: 600; border-bottom: 1px solid #334155; }
-    td { padding: 10px 8px; border-bottom: 1px solid #1e293b; color: #e2e8f0; }
-    tbody tr:hover { background: rgba(30, 41, 59, 0.6); }
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
-      border-radius: 999px; font-size: 11px; font-weight: 600;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      white-space: nowrap;
     }
-    .pill-bull { background: rgba(244, 63, 94, 0.15); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); }
-    .pill-bear { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .pill-neu { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
-    .btn-detail {
-      background: #3b82f6; color: #fff; border: none; padding: 4px 10px;
-      border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: 600;
+
+    th, td {
+      padding: 8px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
     }
-    .btn-detail:hover { background: #2563eb; }
+
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      background: var(--panel);
+      z-index: 1;
+    }
+
+    th:last-child, td:last-child {
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      background: var(--panel-2);
+    }
+
+    tr:hover td {
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .trend-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--panel-2);
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .op-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .op-bull { background: var(--red-bg); color: var(--red); }
+    .op-bear { background: var(--green-bg); color: var(--green); }
+    .op-wait { background: var(--gray-bg); color: #cbd5e1; }
+
+    .empty-state {
+      text-align: center;
+      padding: 22px;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
+    <div class="topbar">
       <div>
-        <div class="sub-title"><span class="pulse-dot"></span>TWSE / TAIFEX DAILY CHIP ANALYTICS</div>
+        <div class="eyebrow">
+          <span class="dot-live"></span>
+          TWSE / TAIFEX DAILY CHIP ANALYTICS
+        </div>
         <h1>台股每日盤後籌碼戰情室</h1>
       </div>
+
       <div class="controls">
-        <div class="badge-box">
-          <span>📅 歷史紀錄：</span>
-          <select id="date-selector" onchange="onDateChange()">
-            <option value="latest">最新盤後數據</option>
+        <div class="pill-box">
+          <span>歷史紀錄：</span>
+          <select id="dateSelect">
+            <option value="__LATEST__">最新盤後數據</option>
           </select>
         </div>
-        <div class="badge-box">
-          <span>🕒 更新時間：<strong id="update-time">讀取中...</strong></span>
-          <button class="icon-btn" onclick="initApp()" title="重新整理">🔄</button>
+        <div class="pill-box">
+          <span>更新時間：</span>
+          <strong id="updateTime">讀取中...</strong>
         </div>
+        <button id="refreshBtn" type="button" title="重新載入">↻</button>
       </div>
     </div>
 
     <div class="legend">
       <div class="legend-items">
-        <span style="color:#94a3b8;">戰情燈號判定：</span>
-        <span><span class="dot dot-red"></span>紅燈（偏多訊號）</span>
-        <span><span class="dot dot-green"></span>綠燈（偏空訊號）</span>
-        <span><span class="dot dot-gray"></span>灰燈（中性參考）</span>
+        <span><i class="badge-dot" style="background:var(--red)"></i>紅燈（偏多訊號）</span>
+        <span><i class="badge-dot" style="background:var(--green)"></i>綠燈（偏空訊號）</span>
+        <span><i class="badge-dot" style="background:var(--gray)"></i>灰燈（中性參考）</span>
       </div>
-      <div style="color:#64748b;">每日 16:30 自動更新並寫入歷史總表</div>
+      <div>依歷史紅綠燈比例統計隔日台指漲跌作為操作參考</div>
     </div>
 
-    <div id="cards-grid" class="cards-grid"></div>
+    <div id="cardsGrid" class="grid"></div>
 
-    <div class="section-title">📊 每日籌碼統計歷史總表</div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>日期</th>
-            <th>台指結算</th>
-            <th>現貨量(億)</th>
-            <th>融資餘額</th>
-            <th>美元台幣</th>
-            <th>外資現貨</th>
-            <th>投信現貨</th>
-            <th>自營商</th>
-            <th>外資期未平倉</th>
-            <th>五大淨額</th>
-            <th>十大淨額</th>
-            <th>P/C比</th>
-            <th>外資選(萬)</th>
-            <th>小台散戶</th>
-            <th>微台散戶</th>
-            <th>台積ADR</th>
-            <th>趨勢判定</th>
-            <th>綜合分數</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="history-tbody">
-          <tr><td colspan="19" style="padding:20px; color:#64748b;">正在載入歷史統計資料...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <script>
-    const itemsConfig = [
-      { id: "01 · 期貨指數", key: "台指結算", rule: "diff_less_green" },
-      { id: "02 · 大盤量能", key: "現貨量(億)", rule: "vol_8000" },
-      { id: "03 · 散戶信用", key: "融資餘額(億)", rule: "diff_less_red" },
-      { id: "04 · 匯率動向", key: "美元兌台幣", rule: "neutral" },
-      { id: "05 · 三大法人", key: "外資現貨(億)", rule: "pos_red" },
-      { id: "06 · 三大法人", key: "投信現貨(億)", rule: "pos_red" },
-      { id: "07 · 三大法人", key: "自營商現貨(億)", rule: "pos_red" },
-      { id: "08 · 期貨籌碼", key: "外資台指期未平倉", rule: "diff_less_green" },
-      { id: "09 · 大額交易人", key: "五大淨額(口)", rule: "pos_red" },
-      { id: "10 · 大額交易人", key: "十大淨額(口)", rule: "pos_red" },
-      { id: "11 · 選擇權指標", key: "P/C未平倉比", rule: "neutral" },
-      { id: "12 · 選擇權指標", key: "外資選擇權未平倉淨額(萬)", rule: "neutral" },
-      { id: "13 · 散戶指標", key: "小台散戶多空比(%)", rule: "pos_green" },
-      { id: "14 · 散戶指標", key: "微台散戶多空比(%)", rule: "pos_green" },
-      { id: "15 · 美股連動", key: "台積電美股ADR指數", rule: "adr_change" }
-    ];
-
-    let latestRecord = null;
-    let historyRecords = {};
-
-    function parseNum(v) {
-      if (v === null || v === undefined || v === "--") return NaN;
-      return parseFloat(String(v).replace(/[,%]/g, ""));
-    }
-
-    function getLight(rule, val, prev, change) {
-      const num = parseNum(val);
-      if (isNaN(num)) return "gray";
-      if (rule === "vol_8000") return num > 8000 ? "red" : "green";
-      if (rule === "pos_red") return num > 0 ? "red" : (num < 0 ? "green" : "gray");
-      if (rule === "pos_green") return num > 0 ? "green" : (num < 0 ? "red" : "gray");
-      if (rule === "diff_less_green" && !isNaN(parseNum(prev))) {
-        return num < parseNum(prev) ? "green" : (num > parseNum(prev) ? "red" : "gray");
-      }
-      if (rule === "diff_less_red" && !isNaN(parseNum(prev))) {
-        return num < parseNum(prev) ? "red" : (num > parseNum(prev) ? "green" : "gray");
-      }
-      if (rule === "adr_change" && !isNaN(parseNum(change))) {
-        return parseNum(change) > 0 ? "red" : (parseNum(change) < 0 ? "green" : "gray");
-      }
-      return "gray";
-    }
-
-    function calcTrendScore(dataset) {
-      let score = 0;
-      itemsConfig.forEach(item => {
-        const raw = dataset[item.key] || {};
-        const light = getLight(item.rule, raw.value, raw.prev, raw.change);
-        if (light === "red") score += 1;
-        if (light === "green") score -= 1;
-      });
-      if (score >= 2) return { label: "區間偏多", cls: "pill-bull", dot: "dot-red", score: "+" + score };
-      if (score <= -2) return { label: "區間偏空", cls: "pill-bear", dot: "dot-green", score: String(score) };
-      return { label: "中性觀望", cls: "pill-neu", dot: "dot-gray", score: score > 0 ? "+" + score : String(score) };
-    }
-
-    function renderCards(record) {
-      if (!record) return;
-      document.getElementById("update-time").textContent = record.update_time || "已更新";
-      const dataset = record.data || record;
-      const grid = document.getElementById("cards-grid");
-
-      grid.innerHTML = itemsConfig.map(item => {
-        const raw = dataset[item.key];
-        let val = "--", prev = null, change = null, subText = "";
-        if (raw !== undefined && raw !== null) {
-          if (typeof raw === "object") {
+    <div class="table-panel">
+      <div class="table-header">
+        <div class="table-title">每日籌碼統計歷史總表</div>
+        <div id="sampleSummary" class="metric-sub"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>台指結算</th>
+              <th>現貨量(億)</th>
+              <th>融資餘額(億)</th>
+              <th>美元台幣</th>
+              <th>外資現貨</th>
+              <th>投信現貨</th>
+              <th>自營商</th>
+              <th>外資期未平倉</th>
+              <th>五大淨額</th>
+              <th>十大淨額</th>
+              <th>P/C比</th>
+              <th>外資選(萬)</th>
+              <th>小台散戶</th>
+              <th>微台散戶</th>
+              <th>台積ADR</th>
+              <th>趨勢判定</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr>
+              <td colspan="
