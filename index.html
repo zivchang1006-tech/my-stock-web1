@@ -363,185 +363,363 @@
           </thead>
           <tbody id="historyBody">
             <tr>
-              <td colspan="
-                <script>
-    const itemsConfig = [
-      { id: "01 · 期貨指數", key: "台指結算", rule: "diff_less_green" },
-      { id: "02 · 大盤量能", key: "現貨量(億)", rule: "vol_8000" },
-      { id: "03 · 散戶信用", key: "融資餘額(億)", rule: "diff_less_red" },
-      { id: "04 · 匯率動向", key: "美元兌台幣", rule: "neutral" },
-      { id: "05 · 三大法人", key: "外資現貨(億)", rule: "pos_red" },
-      { id: "06 · 三大法人", key: "投信現貨(億)", rule: "pos_red" },
-      { id: "07 · 三大法人", key: "自營商現貨(億)", rule: "pos_red" },
-      { id: "08 · 期貨籌碼", key: "外資台指期未平倉", rule: "diff_less_green" },
-      { id: "09 · 大額交易人", key: "五大淨額(口)", rule: "pos_red" },
-      { id: "10 · 大額交易人", key: "十大淨額(口)", rule: "pos_red" },
-      { id: "11 · 選擇權指標", key: "P/C未平倉比", rule: "neutral" },
-      { id: "12 · 選擇權指標", key: "外資選擇權未平倉淨額(萬)", rule: "neutral" },
-      { id: "13 · 散戶指標", key: "小台散戶多空比(%)", rule: "pos_green" },
-      { id: "14 · 散戶指標", key: "微台散戶多空比(%)", rule: "pos_green" },
-      { id: "15 · 美股連動", key: "台積電美股ADR指數", rule: "adr_change" }
+              <td colspan="18" class="empty-state">正在載入歷史統計資料...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const METRIC_META = [
+      { key: "台指結算", tag: "01·期貨指數", fmt: "int" },
+      { key: "現貨量(億)", tag: "02·大盤量能", fmt: "f1" },
+      { key: "融資餘額(億)", tag: "03·散戶信用", fmt: "f2" },
+      { key: "美元兌台幣", tag: "04·匯率動向", fmt: "f3" },
+      { key: "外資現貨(億)", tag: "05·三大法人", fmt: "f2" },
+      { key: "投信現貨(億)", tag: "06·三大法人", fmt: "f2" },
+      { key: "自營商現貨(億)", tag: "07·三大法人", fmt: "f2" },
+      { key: "外資台指期未平倉", tag: "08·期貨籌碼", fmt: "int" },
+      { key: "五大淨額(口)", tag: "09·大額交易人", fmt: "int" },
+      { key: "十大淨額(口)", tag: "10·大額交易人", fmt: "int" },
+      { key: "P/C未平倉比", tag: "11·選擇權指標", fmt: "pct" },
+      { key: "外資選擇權未平倉淨額(萬)", tag: "12·選擇權指標", fmt: "int" },
+      { key: "小台散戶多空比(%)", tag: "13·散戶指標", fmt: "f2" },
+      { key: "微台散戶多空比(%)", tag: "14·散戶指標", fmt: "f2" },
+      { key: "台積電美股ADR指數", tag: "15·美股連動", fmt: "f2" },
     ];
 
-    let latestRecord = null;
-    let historyRecords = {};
-
-    function parseNum(v) {
-      if (v === null || v === undefined || v === "--") return NaN;
-      return parseFloat(String(v).replace(/[,%]/g, ""));
+    function toNum(v) {
+      if (v === null || v === undefined || v === "" || v === "--") return null;
+      const n = parseFloat(String(v).replace(/,/g, "").replace("%", "").trim());
+      return Number.isFinite(n) ? n : null;
     }
 
-    function getLight(rule, val, prev, change) {
-      const num = parseNum(val);
-      if (isNaN(num)) return "gray";
-      if (rule === "vol_8000") return num > 8000 ? "red" : "green";
-      if (rule === "pos_red") return num > 0 ? "red" : (num < 0 ? "green" : "gray");
-      if (rule === "pos_green") return num > 0 ? "green" : (num < 0 ? "red" : "gray");
-      if (rule === "diff_less_green" && !isNaN(parseNum(prev))) {
-        return num < parseNum(prev) ? "green" : (num > parseNum(prev) ? "red" : "gray");
+    function fmtVal(entry, mode) {
+      if (!entry || entry.value === null || entry.value === undefined || entry.value === "--") {
+        return "--";
       }
-      if (rule === "diff_less_red" && !isNaN(parseNum(prev))) {
-        return num < parseNum(prev) ? "red" : (num > parseNum(prev) ? "green" : "gray");
+      if (mode === "pct") {
+        const s = String(entry.value);
+        return s.endsWith("%") ? s : `${s}%`;
       }
-      if (rule === "adr_change" && !isNaN(parseNum(change))) {
-        return parseNum(change) > 0 ? "red" : (parseNum(change) < 0 ? "green" : "gray");
-      }
-      return "gray";
+      const n = toNum(entry.value);
+      if (n === null) return String(entry.value);
+      if (mode === "int") return Math.round(n).toString();
+      if (mode === "f1") return n.toFixed(1);
+      if (mode === "f2") return n.toFixed(2);
+      if (mode === "f3") return n.toFixed(3);
+      return String(entry.value);
     }
 
-    function calcTrendScore(dataset) {
-      let score = 0;
-      itemsConfig.forEach(item => {
-        const raw = dataset[item.key] || {};
-        const light = getLight(item.rule, raw.value, raw.prev, raw.change);
-        if (light === "red") score += 1;
-        if (light === "green") score -= 1;
-      });
-      if (score >= 2) return { label: "區間偏多", cls: "pill-bull", dot: "dot-red", score: "+" + score };
-      if (score <= -2) return { label: "區間偏空", cls: "pill-bear", dot: "dot-green", score: String(score) };
-      return { label: "中性觀望", cls: "pill-neu", dot: "dot-gray", score: score > 0 ? "+" + score : String(score) };
+    // 單一指標燈號判定：1 = 紅燈(偏多), -1 = 綠燈(偏空), 0 = 灰燈(中性)
+    function getSignal(key, entry) {
+      if (!entry) return 0;
+      const v = toNum(entry.value);
+      const prev = toNum(entry.prev);
+      const chg = toNum(entry.change);
+
+      if (key === "台指結算") {
+        if (v !== null && prev !== null) return v > prev ? 1 : (v < prev ? -1 : 0);
+        return 0;
+      }
+      if (key === "融資餘額(億)") {
+        if (v !== null && prev !== null) return v < prev ? 1 : (v > prev ? -1 : 0);
+        return 0;
+      }
+      if (key === "美元兌台幣") {
+        if (v !== null && prev !== null) return v < prev ? 1 : (v > prev ? -1 : 0);
+        return 0;
+      }
+      if (["外資現貨(億)", "投信現貨(億)", "自營商現貨(億)", "外資台指期未平倉", "五大淨額(口)", "十大淨額(口)", "外資選擇權未平倉淨額(萬)"].includes(key)) {
+        if (v === null || v === 0) return 0;
+        return v > 0 ? 1 : -1;
+      }
+      if (key === "P/C未平倉比") {
+        if (v === null) return 0;
+        if (v >= 105) return 1;
+        if (v <= 90) return -1;
+        return 0;
+      }
+      if (["小台散戶多空比(%)", "微台散戶多空比(%)"].includes(key)) {
+        // 散戶過度偏多視為反指標(綠燈)，散戶偏空視為反指標(紅燈)
+        if (v === null) return 0;
+        if (v <= -15) return 1;
+        if (v >= 15) return -1;
+        return 0;
+      }
+      if (key === "台積電美股ADR指數") {
+        if (chg !== null) return chg > 0 ? 1 : (chg < 0 ? -1 : 0);
+        return 0;
+      }
+      return 0;
+    }
+
+    // 統計單日紅燈數、綠燈數與紅燈比例
+    function calcRedGreen(record) {
+      const d = (record && record.data) || {};
+      let red = 0;
+      let green = 0;
+      for (const m of METRIC_META) {
+        const sig = getSignal(m.key, d[m.key]);
+        if (sig === 1) red += 1;
+        else if (sig === -1) green += 1;
+      }
+      const activeTotal = red + green;
+      const redRatio = activeTotal > 0 ? red / activeTotal : 0.5;
+      return { red, green, activeTotal, redRatio };
+    }
+
+    // 根據歷史紀錄中「相近紅/綠燈比例」統計隔日台指漲跌，推估隔日漲幅與操作
+    function buildOperationStats(records) {
+      // records 按日期由舊到新排序
+      const sorted = [...records].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+      const samples = [];
+
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const curClose = toNum(sorted[i]?.data?.["台指結算"]?.value);
+        const nextClose = toNum(sorted[i + 1]?.data?.["台指結算"]?.value);
+        if (curClose && curClose > 0 && nextClose && nextClose > 0) {
+          const pctChange = ((nextClose - curClose) / curClose) * 100;
+          const ptsChange = nextClose - curClose;
+          const rg = calcRedGreen(sorted[i]);
+          samples.push({
+            redRatio: rg.redRatio,
+            pctChange,
+            ptsChange,
+          });
+        }
+      }
+
+      return function evaluateOperation(record) {
+        const rg = calcRedGreen(record);
+        // 尋找紅燈比例相差在 ±15% 內的歷史樣本
+        const matched = samples.filter((s) => Math.abs(s.redRatio - rg.redRatio) <= 0.15);
+
+        if (matched.length > 0) {
+          const avgPct = matched.reduce((acc, s) => acc + s.pctChange, 0) / matched.length;
+          const avgPts = matched.reduce((acc, s) => acc + s.ptsChange, 0) / matched.length;
+          const signPct = avgPct >= 0 ? "+" : "";
+          const signPts = avgPts >= 0 ? "+" : "";
+          let action = "觀望整理";
+          let cls = "op-wait";
+          if (avgPct >= 0.35) {
+            action = "偏多操作";
+            cls = "op-bull";
+          } else if (avgPct <= -0.35) {
+            action = "偏空防守";
+            cls = "op-bear";
+          }
+          return {
+            label: `${action}（估 ${signPct}${avgPct.toFixed(2)}% / ${signPts}${Math.round(avgPts)}點）`,
+            cls,
+            note: `樣本 ${matched.length} 筆`,
+          };
+        }
+
+        // 尚無跨日樣本時，以當日紅綠燈比例給出初步參考
+        const ratioPct = Math.round(rg.redRatio * 100);
+        if (rg.red > rg.green + 1) {
+          return {
+            label: `紅燈佔 ${ratioPct}%・偏多參考`,
+            cls: "op-bull",
+            note: `累積 ${samples.length} 筆隔日樣本`,
+          };
+        }
+        if (rg.green > rg.red + 1) {
+          return {
+            label: `紅燈佔 ${ratioPct}%・偏空參考`,
+            cls: "op-bear",
+            note: `累積 ${samples.length} 筆隔日樣本`,
+          };
+        }
+        return {
+          label: `紅燈佔 ${ratioPct}%・中性觀望`,
+          cls: "op-wait",
+          note: `累積 ${samples.length} 筆隔日樣本`,
+        };
+      };
     }
 
     function renderCards(record) {
-      if (!record) return;
-      document.getElementById("update-time").textContent = record.update_time || "已更新";
-      const dataset = record.data || record;
-      const grid = document.getElementById("cards-grid");
-      if (!grid) return;
+      const grid = document.getElementById("cardsGrid");
+      const d = (record && record.data) || {};
+      grid.innerHTML = METRIC_META.map((m) => {
+        const entry = d[m.key] || { value: "--" };
+        const sig = getSignal(m.key, entry);
+        const dotCls = sig === 1 ? "sig-red" : (sig === -1 ? "sig-green" : "sig-gray");
+        const valCls = sig === 1 ? "val-red" : (sig === -1 ? "val-green" : "val-neutral");
+        const dispVal = fmtVal(entry, m.fmt);
 
-      grid.innerHTML = itemsConfig.map(item => {
-        const raw = dataset[item.key];
-        let val = "--", prev = null, change = null, subText = "";
-        if (raw !== undefined && raw !== null) {
-          if (typeof raw === "object") {
-            val = raw.value !== undefined && raw.value !== null ? raw.value : "--";
-            prev = raw.prev !== undefined ? raw.prev : null;
-            change = raw.change !== undefined ? raw.change : null;
-          } else { val = raw; }
+        let subText = "";
+        const v = toNum(entry.value);
+        const prev = toNum(entry.prev);
+        const chg = toNum(entry.change);
+        if (m.key === "台指結算" && v !== null && prev !== null) {
+          const diff = Math.round(v - prev);
+          subText = `較前日: ${diff >= 0 ? "+" : ""}${diff}`;
+        } else if (m.key === "融資餘額(億)" && v !== null && prev !== null) {
+          const diff = (v - prev).toFixed(2);
+          subText = `較前日: ${diff >= 0 ? "+" : ""}${diff}`;
+        } else if (m.key === "外資台指期未平倉" && v !== null && prev !== null) {
+          const diff = Math.round(v - prev);
+          subText = `較前日: ${diff >= 0 ? "+" : ""}${diff}`;
+        } else if (m.key === "台積電美股ADR指數" && chg !== null) {
+          subText = `漲跌: ${chg >= 0 ? "+" : ""}${chg.toFixed(2)}`;
         }
-        if (prev !== null && !isNaN(parseNum(val)) && !isNaN(parseNum(prev))) {
-          const diff = (parseNum(val) - parseNum(prev)).toFixed(2).replace(/\.00$/, "");
-          subText = `較前日: ${diff > 0 ? "+" + diff : diff}`;
-        } else if (change !== null && !isNaN(parseNum(change))) {
-          subText = `漲跌: ${change > 0 ? "+" + change : change}`;
-        }
-
-        const light = getLight(item.rule, val, prev, change);
-        const dotCls = light === "red" ? "dot-red" : (light === "green" ? "dot-green" : "dot-gray");
-        const txtCls = light === "red" ? "text-red" : (light === "green" ? "text-green" : "text-white");
 
         return `
           <div class="card">
             <div class="card-top">
-              <span class="tag">${item.id}</span>
-              <span class="dot ${dotCls}" style="margin:0;"></span>
+              <span class="tag">${m.tag}</span>
+              <span class="signal-dot ${dotCls}"></span>
             </div>
-            <div class="card-title">${item.key}</div>
-            <div class="card-val ${txtCls}">${val}</div>
-            <div class="card-sub">${subText}</div>
+            <div>
+              <div class="metric-name">${m.key}</div>
+              <div class="metric-val ${valCls}">${dispVal}</div>
+              ${subText ? `<div class="metric-sub">${subText}</div>` : ""}
+            </div>
           </div>
         `;
       }).join("");
     }
 
-    function renderHistoryTable() {
-      const tbody = document.getElementById("history-tbody");
-      if (!tbody) return;
-      const dates = Object.keys(historyRecords).sort().reverse();
-      if (dates.length === 0 && latestRecord) {
-        const todayKey = (latestRecord.update_time || "最新").split(" ").at(0);
-        historyRecords[todayKey] = latestRecord;
-        dates.push(todayKey);
+    function renderHistoryTable(records) {
+      const tbody = document.getElementById("historyBody");
+      const summaryEl = document.getElementById("sampleSummary");
+
+      if (!records || records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="18" class="empty-state">目前尚無籌碼歷史資料</td></tr>`;
+        summaryEl.textContent = "";
+        return;
       }
 
-      tbody.innerHTML = dates.map(d => {
-        const rec = historyRecords[d];
-        const ds = rec.data || rec;
-        const getV = (k, suffix = "") => {
-          const v = ds[k] && ds[k].value !== undefined ? ds[k].value : "--";
-          return v === "--" ? "--" : v + suffix;
-        };
-        const trend = calcTrendScore(ds);
-        const scoreColor = Number(trend.score) > 0 ? "text-red" : (Number(trend.score) < 0 ? "text-green" : "text-white");
+      const evaluateOp = buildOperationStats(records);
+      const descRecords = [...records].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
 
+      let validPairs = 0;
+      const asc = [...records].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+      for (let i = 0; i < asc.length - 1; i++) {
+        if (toNum(asc[i]?.data?.["台指結算"]?.value) && toNum(asc[i + 1]?.data?.["台指結算"]?.value)) {
+          validPairs += 1;
+        }
+      }
+      summaryEl.textContent = `已累積 ${records.length} 個交易日｜可比對隔日漲跌樣本 ${validPairs} 筆`;
+
+      tbody.innerHTML = descRecords.map((rec) => {
+        const d = rec.data || {};
+        const rg = calcRedGreen(rec);
+        const op = evaluateOp(rec);
+
+        const cell = (key, mode) => `<td>${fmtVal(d[key], mode)}</td>`;
         return `
           <tr>
-            <td style="font-weight:700; color:#f8fafc;">${d}</td>
-            <td>${getV("台指結算")}</td>
-            <td>${getV("現貨量(億)")}</td>
-            <td>${getV("融資餘額(億)")}</td>
-            <td>${getV("美元兌台幣")}</td>
-            <td class="${parseNum(getV('外資現貨(億)')) >= 0 ? 'text-red' : 'text-green'}">${getV("外資現貨(億)")}</td>
-            <td class="${parseNum(getV('投信現貨(億)')) >= 0 ? 'text-red' : 'text-green'}">${getV("投信現貨(億)")}</td>
-            <td class="${parseNum(getV('自營商現貨(億)')) >= 0 ? 'text-red' : 'text-green'}">${getV("自營商現貨(億)")}</td>
-            <td class="${parseNum(getV('外資台指期未平倉')) >= 0 ? 'text-red' : 'text-green'}">${getV("外資台指期未平倉")}</td>
-            <td class="${parseNum(getV('五大淨額(口)')) >= 0 ? 'text-red' : 'text-green'}">${getV("五大淨額(口)")}</td>
-            <td class="${parseNum(getV('十大淨額(口)')) >= 0 ? 'text-red' : 'text-green'}">${getV("十大淨額(口)")}</td>
-            <td>${getV("P/C未平倉比")}</td>
-            <td>${getV("外資選擇權未平倉淨額(萬)", "萬")}</td>
-            <td>${getV("小台散戶多空比(%)", "%")}</td>
-            <td>${getV("微台散戶多空比(%)", "%")}</td>
-            <td class="${parseNum(ds['台積電美股ADR指數']?.change) >= 0 ? 'text-red' : 'text-green'}">${ds['台積電美股ADR指數']?.change ? (ds['台積電美股ADR指數'].change > 0 ? '+' : '') + ds['台積電美股ADR指數'].change : getV("台積電美股ADR指數")}</td>
-            <td><span class="status-pill ${trend.cls}"><span class="dot ${trend.dot}" style="width:7px;height:7px;margin:0;"></span>${trend.label}</span></td>
-            <td class="${scoreColor}" style="font-weight:700;">${trend.score}</td>
-            <td><button class="btn-detail" onclick="selectDate('${d}')">明細</button></td>
+            <td><strong>${rec.date || "--"}</strong></td>
+            ${cell("台指結算", "int")}
+            ${cell("現貨量(億)", "f1")}
+            ${cell("融資餘額(億)", "f2")}
+            ${cell("美元兌台幣", "f3")}
+            ${cell("外資現貨(億)", "f2")}
+            ${cell("投信現貨(億)", "f2")}
+            ${cell("自營商現貨(億)", "f2")}
+            ${cell("外資台指期未平倉", "int")}
+            ${cell("五大淨額(口)", "int")}
+            ${cell("十大淨額(口)", "int")}
+            ${cell("P/C未平倉比", "pct")}
+            ${cell("外資選擇權未平倉淨額(萬)", "int")}
+            ${cell("小台散戶多空比(%)", "f2")}
+            ${cell("微台散戶多空比(%)", "f2")}
+            ${cell("台積電美股ADR指數", "f2")}
+            <td>
+              <span class="trend-pill">
+                <span style="color:var(--red)">紅 ${rg.red}</span>
+                <span>/</span>
+                <span style="color:var(--green)">綠 ${rg.green}</span>
+              </span>
+            </td>
+            <td>
+              <span class="op-badge ${op.cls}" title="${op.note}">${op.label}</span>
+            </td>
           </tr>
         `;
       }).join("");
     }
 
-    function selectDate(d) {
-      document.getElementById("date-selector").value = d;
-      onDateChange();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    let allRecords = [];
+
+    function applySelectedView() {
+      const sel = document.getElementById("dateSelect").value;
+      const sortedDesc = [...allRecords].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+      const target = sel === "__LATEST__"
+        ? sortedDesc[0]
+        : (sortedDesc.find((r) => r.date === sel) || sortedDesc[0]);
+
+      document.getElementById("updateTime").textContent = (target && target.update_time) || "無資料";
+      renderCards(target);
+      renderHistoryTable(allRecords);
     }
 
-    function onDateChange() {
-      const val = document.getElementById("date-selector").value;
-      if (val === "latest") renderCards(latestRecord);
-      else if (historyRecords[val]) renderCards(historyRecords[val]);
-    }
+    async function loadAllData() {
+      const ts = Date.now();
+      let hist = [];
+      let latest = null;
 
-    async function initApp() {
       try {
-        const res = await fetch("data.json?t=" + Date.now());
-        latestRecord = await res.json();
-        renderCards(latestRecord);
+        const resH = await fetch(`./history.json?t=${ts}`, { cache: "no-store" });
+        if (resH.ok) {
+          const parsedH = await resH.json();
+          if (Array.isArray(parsedH)) hist = parsedH;
+        }
+      } catch (_) {}
 
-        const hRes = await fetch("history.json?t=" + Date.now());
-        if (hRes.ok) historyRecords = await hRes.json();
+      try {
+        const resD = await fetch(`./data.json?t=${ts}`, { cache: "no-store" });
+        if (resD.ok) {
+          const parsedD = await resD.json();
+          if (parsedD && parsedD.data) {
+            latest = {
+              date: parsedD.date || String(parsedD.update_time || "").slice(0, 10) || "最新",
+              update_time: parsedD.update_time || "",
+              data: parsedD.data,
+            };
+          }
+        }
+      } catch (_) {}
 
-        const selector = document.getElementById("date-selector");
-        const dates = Object.keys(historyRecords).sort().reverse();
-        selector.innerHTML = `<option value="latest">最新盤後數據</option>` +
-          dates.map(d => `<option value="${d}">${d} 盤後存檔</option>`).join("");
-        renderHistoryTable();
-      } catch (e) {
-        document.getElementById("update-time").textContent = "讀取失敗";
+      const map = new Map();
+      for (const item of hist) {
+        if (item && item.date) map.set(item.date, item);
       }
+      if (latest && latest.date) {
+        map.set(latest.date, latest);
+      }
+
+      allRecords = Array.from(map.values());
+
+      const selectEl = document.getElementById("dateSelect");
+      const prevVal = selectEl.value;
+      const descDates = [...allRecords]
+        .map((r) => r.date)
+        .filter(Boolean)
+        .sort((a, b) => b.localeCompare(a));
+
+      selectEl.innerHTML = `<option value="__LATEST__">最新盤後數據</option>` +
+        descDates.map((d) => `<option value="${d}">${d}</option>`).join("");
+
+      if (prevVal === "__LATEST__" || descDates.includes(prevVal)) {
+        selectEl.value = prevVal;
+      } else {
+        selectEl.value = "__LATEST__";
+      }
+
+      applySelectedView();
     }
-    initApp();
+
+    document.getElementById("dateSelect").addEventListener("change", applySelectedView);
+    document.getElementById("refreshBtn").addEventListener("click", loadAllData);
+
+    loadAllData();
   </script>
 </body>
 </html>
-          
