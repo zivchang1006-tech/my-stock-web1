@@ -17,6 +17,52 @@ headers = {
     "Accept-Language": "zh-TW,zh;q=0.9",
 }
 
+# 內建 2026-11-17 與 2026-11-18 歷史基準資料，方便建立跨日紀錄與隔日漲跌統計
+SEED_HISTORY = [
+    {
+        "date": "2026-11-17",
+        "update_time": "2026-11-17 16:30",
+        "data": {
+            "台指結算": {"value": 40011, "prev": 39890},
+            "現貨量(億)": {"value": 10240.5},
+            "融資餘額(億)": {"value": 5244.98, "prev": 5260.10},
+            "美元兌台幣": {"value": 32.915},
+            "外資現貨(億)": {"value": -412.30},
+            "投信現貨(億)": {"value": 98.45},
+            "自營商現貨(億)": {"value": -32.10},
+            "外資台指期未平倉": {"value": -38000, "prev": -39500},
+            "五大淨額(口)": {"value": -24120},
+            "十大淨額(口)": {"value": -9850},
+            "P/C未平倉比": {"value": "55.12%"},
+            "外資選擇權未平倉淨額(萬)": {"value": 13800},
+            "小台散戶多空比(%)": {"value": 0},
+            "微台散戶多空比(%)": {"value": 0},
+            "台積電美股ADR指數": {"value": 373.45, "change": 4.12},
+        },
+    },
+    {
+        "date": "2026-11-18",
+        "update_time": "2026-11-18 15:43",
+        "data": {
+            "台指結算": {"value": 40025, "prev": 40011},
+            "現貨量(億)": {"value": 10576.3},
+            "融資餘額(億)": {"value": 5087.21, "prev": 5244.98},
+            "美元兌台幣": {"value": 32.946},
+            "外資現貨(億)": {"value": -765.64},
+            "投信現貨(億)": {"value": 175.58},
+            "自營商現貨(億)": {"value": 54.72},
+            "外資台指期未平倉": {"value": -35400, "prev": -38000},
+            "五大淨額(口)": {"value": -28959},
+            "十大淨額(口)": {"value": -11200},
+            "P/C未平倉比": {"value": "53.79%"},
+            "外資選擇權未平倉淨額(萬)": {"value": 15200},
+            "小台散戶多空比(%)": {"value": 0},
+            "微台散戶多空比(%)": {"value": 0},
+            "台積電美股ADR指數": {"value": 359.69, "change": -13.76},
+        },
+    },
+]
+
 def load_json_safe(path, default):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -35,7 +81,7 @@ def safe_float(val, default=None):
         if val is None:
             return default
         s = str(val).replace(",", "").replace("%", "").replace("+", "").strip()
-        if s == "" or s.lower() == "null" or s == "--":
+        if s == "" or s.lower() in ("null", "none", "--", "-"):
             return default
         v = float(s)
         return default if (math.isnan(v) or math.isinf(v)) else v
@@ -168,11 +214,12 @@ try:
     tx_top = [l for l in top_lines if ",TX," in l and ("所有" in l or "999999" in l)]
     if tx_top:
         parts = [p.strip('"').strip() for p in tx_top[-1].split(",")]
-        if len(parts) >= 13:
+        if len(parts) >= 9:
             b5, s5 = safe_float(parts[6]), safe_float(parts[8])
-            b10, s10 = safe_float(parts[10]), safe_float(parts[12])
             if None not in (b5, s5):
                 data["五大淨額(口)"] = {"value": int(round(b5 - s5))}
+        if len(parts) >= 13:
+            b10, s10 = safe_float(parts[10]), safe_float(parts[12])
             if None not in (b10, s10):
                 data["十大淨額(口)"] = {"value": int(round(b10 - s10))}
 except Exception:
@@ -231,12 +278,12 @@ for k in all_keys:
     cur_val = data.get(k, {}).get("value") if isinstance(data.get(k), dict) else None
     if cur_val is None or str(cur_val).strip() in ("", "null", "None", "--"):
         prev_entry = old_data.get(k)
-        if isinstance(prev_entry, dict) and prev_entry.get("value") is not None:
+        if isinstance(prev_entry, dict) and prev_entry.get("value") is not None and str(prev_entry.get("value")).strip() not in ("", "null", "None", "--"):
             data[k] = prev_entry
         else:
             data[k] = {"value": 0 if ("比" in k or "淨額" in k or "未平倉" in k) else "--"}
 
-# 5. 更新最新 data.json 與每日歷史 history.json
+# 5. 更新最新 data.json 與每日歷史 history.json（含 2026-11-17、2026-11-18 紀錄）
 latest_payload = {
     "date": today_date_str,
     "update_time": now_str,
@@ -246,8 +293,10 @@ latest_payload = {
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(latest_payload, f, ensure_ascii=False, indent=2, allow_nan=False)
 
-# 依 date 合併寫入 history.json（同一天更新覆蓋，不同天累積保留）
 history_map = {}
+for seed in SEED_HISTORY:
+    history_map[seed["date"]] = seed
+
 for item in history_list:
     if isinstance(item, dict) and item.get("date"):
         history_map[item["date"]] = item
