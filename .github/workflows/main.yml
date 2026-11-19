@@ -1,40 +1,46 @@
-name: 下午16點30分準時更新＋每小時補齊數據
+name: Daily Taiwan Stock Chip Update
 
 on:
   schedule:
-    - cron: '30 8 * * 1-5'
-    - cron: '15 * * * 1-6'
+    # GitHub Actions cron 使用 UTC；09:15 UTC = 台灣時間 17:15。
+    # 避開下午 5 點剛發布資料的時間，稍留緩衝。
+    - cron: '15 9 * * 1-5'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: daily-stock-chip-update
+  cancel-in-progress: false
+
 jobs:
-  update-data:
+  update:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
     steps:
-      - name: 下載專案檔案
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 安裝 Python 環境
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
-      - name: 極速安裝必要套件
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch TWSE and TAIFEX data
+        run: python update_stock_data.py
+
+      - name: Commit daily JSON files
         run: |
-          pip install --only-binary=:all: requests yfinance
-
-      - name: 執行爬蟲抓官方真實數據
-        run: |
-          python update.py
-
-      - name: 自動存檔並更新網站
-        run: |
-          git config --global user.name 'StockBot'
-          git config --global user.email 'bot@example.com'
-          git add data.json
-          git commit -m "自動更新最新股市數據" || exit 0
-          git push
-
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json history.json
+          if git diff --cached --quiet; then
+            echo "No data changes to commit."
+          else
+            git commit -m "Update daily Taiwan stock chip data"
+            git push
+          fi
