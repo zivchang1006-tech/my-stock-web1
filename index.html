@@ -14,8 +14,6 @@
       line-height: 1.4;
     }
     .container { max-width: 1400px; margin: 0 auto; }
-    
-    /* 頂部標題列 */
     .header {
       display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
       border-bottom: 1px solid #1e293b; padding-bottom: 16px; margin-bottom: 16px; gap: 12px;
@@ -35,8 +33,6 @@
       background: #1e293b; border: none; color: #e2e8f0; padding: 4px 8px; border-radius: 6px; cursor: pointer;
     }
     button.icon-btn:hover { background: #334155; }
-
-    /* 燈號說明列 */
     .legend {
       background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b; padding: 10px 16px;
       border-radius: 10px; margin-bottom: 16px; font-size: 12px; color: #cbd5e1;
@@ -47,8 +43,6 @@
     .dot-red { background: #f43f5e; box-shadow: 0 0 8px #f43f5e; }
     .dot-green { background: #10b981; box-shadow: 0 0 8px #10b981; }
     .dot-gray { background: #64748b; }
-
-    /* 縮小版 15 張卡片網格 */
     .cards-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -57,7 +51,6 @@
     }
     @media (max-width: 1100px) { .cards-grid { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 640px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
-
     .card {
       background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
       padding: 12px 14px; transition: border-color 0.2s;
@@ -71,8 +64,6 @@
     .text-red { color: #fb7185; }
     .text-green { color: #34d399; }
     .text-white { color: #f8fafc; }
-
-    /* 每日歷史統計總表（仿第二張圖樣式） */
     .section-title { font-size: 16px; font-weight: 700; color: #f8fafc; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
     .table-wrap {
       background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
@@ -99,7 +90,6 @@
 </head>
 <body>
   <div class="container">
-    <!-- 頂部標題 -->
     <div class="header">
       <div>
         <div class="sub-title"><span class="pulse-dot"></span>TWSE / TAIFEX DAILY CHIP ANALYTICS</div>
@@ -119,7 +109,6 @@
       </div>
     </div>
 
-    <!-- 燈號說明 -->
     <div class="legend">
       <div class="legend-items">
         <span style="color:#94a3b8;">戰情燈號判定：</span>
@@ -130,10 +119,8 @@
       <div style="color:#64748b;">每日 16:30 自動更新並寫入歷史總表</div>
     </div>
 
-    <!-- 15 張縮小版卡片 -->
     <div id="cards-grid" class="cards-grid"></div>
 
-    <!-- 每日統計歷史總表 -->
     <div class="section-title">📊 每日籌碼統計歷史總表</div>
     <div class="table-wrap">
       <table>
@@ -233,3 +220,6 @@
 
       grid.innerHTML = itemsConfig.map(item => {
         const raw = dataset[item.key];
+        let val = "--", prev = null, change = null, subText = "";
+        if (raw !== undefined && raw !== null) {
+          if (typeof raw === "object") {
